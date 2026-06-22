@@ -833,10 +833,18 @@ function ageDays(d)   { return Math.floor((Date.now()-new Date(d).getTime())/864
 /* ═══════════════════════════════════
    LINEAR GRAPHQL
 ═══════════════════════════════════ */
-function gql(after) {
+function gqlUsers() {
+  return `{ users(first:100) { nodes { id name displayName } } }`;
+}
+
+function gql(after, userIds) {
   const c = after ? `, after:"${after}"` : '';
+  // If we have user IDs, filter at the API level — much faster
+  const assigneeFilter = userIds && userIds.length > 0
+    ? `, filter:{assignee:{id:{in:["${userIds.join('","')}"]}},state:{type:{nin:["completed","cancelled"]}}}`
+    : `, filter:{state:{type:{nin:["completed","cancelled"]}}}`;
   return `{
-    issues(first:250${c}, filter:{state:{type:{nin:["completed","cancelled"]}}}) {
+    issues(first:250${c}${assigneeFilter}) {
       pageInfo { hasNextPage endCursor }
       nodes {
         id identifier title priority
@@ -854,14 +862,51 @@ function gql(after) {
 async function fetchIssues() {
   const { url } = getCfg();
   if (!url) throw new Error('No Worker URL configured. Go to Settings → Connection to set it up.');
+
+  // Step 1 — resolve team member names to Linear user IDs
+  let userIds = [];
+  const teamNames = getTeamNames();
+  if (teamNames && teamNames.length > 0) {
+    setLdrMsg('Resolving team members…');
+    try {
+      const r = await fetch(url, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({query:gqlUsers()})
+      });
+      if (r.ok) {
+        const j = await r.json();
+        const allUsers = j.data?.users?.nodes || [];
+        // Match each Linear user against our team roster
+        userIds = allUsers
+          .filter(u => {
+            const uName = normName(u.displayName || u.name);
+            return teamNames.some(t => {
+              const tTokens = t.split(/[\s.]+/);
+              const uTokens = uName.split(/[\s.]+/);
+              // Match on first name, or full name
+              return tTokens[0] && uTokens[0] && (
+                tTokens[0] === uTokens[0] || t === uName
+              );
+            });
+          })
+          .map(u => u.id);
+        setLdrMsg(`Found ${userIds.length} of ${teamNames.length} team members in Linear…`);
+      }
+    } catch(e) {
+      console.warn('Could not resolve user IDs, falling back to full fetch', e);
+    }
+  }
+
+  // Step 2 — fetch issues filtered by those user IDs
   let all=[], cursor=null, page=0;
   while(true) {
     page++;
-    setLdrMsg(`Fetching from Linear — page ${page}…`);
+    setLdrMsg(`Fetching issues — page ${page}…`);
     const r = await fetch(url, {
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({query:gql(cursor)})
+      body:JSON.stringify({query:gql(cursor, userIds)})
     });
     if(!r.ok) throw new Error(`Worker returned HTTP ${r.status}. Check your Worker URL in Settings.`);
     const j = await r.json();
