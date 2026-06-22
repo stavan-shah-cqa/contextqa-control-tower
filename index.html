@@ -1,0 +1,1497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-cache,no-store,must-revalidate">
+<title>ContextQA · Control Tower</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+
+:root{
+  --page:#F7F8FA;
+  --surface:#FFFFFF;
+  --surface-2:#F7F8FA;
+  --surface-3:#EFF1F5;
+  --border:#E4E7EC;
+  --border-strong:#C9CDD6;
+  --ink:#101828;
+  --ink-2:#344054;
+  --ink-3:#667085;
+  --ink-4:#98A2B3;
+  --ink-5:#D0D5DD;
+
+  --accent:#5B5BD6;
+  --accent-2:#EEF0FF;
+  --accent-3:#C7C9F5;
+
+  --red:#D92D20;    --red-bg:#FEF3F2;   --red-dim:#FECDCA;
+  --amber:#B54708;  --amber-bg:#FFFAEB; --amber-dim:#FEF0C7;
+  --green:#027A48; --green-bg:#ECFDF3;  --green-dim:#A6F4C5;
+  --blue:#175CD3;  --blue-bg:#EFF8FF;   --blue-dim:#B2DDFF;
+  --purple:#6941C6;--purple-bg:#F4F3FF; --purple-dim:#D9D6FE;
+
+  --cat-client:#5B5BD6;  --cat-client-bg:#EEF0FF;
+  --cat-poc:#0BA5EC;     --cat-poc-bg:#E0F5FF;
+  --cat-product:#12B76A; --cat-product-bg:#ECFDF3;
+  --cat-other:#667085;   --cat-other-bg:#F2F4F7;
+
+  --sidebar:232px;
+  --topbar:56px;
+  --r:8px;
+  --r-lg:12px;
+  --shadow-xs:0 1px 2px rgba(16,24,40,.05);
+  --shadow-sm:0 1px 3px rgba(16,24,40,.1),0 1px 2px rgba(16,24,40,.06);
+  --shadow-md:0 4px 8px rgba(16,24,40,.08),0 2px 4px rgba(16,24,40,.04);
+}
+
+body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;background:var(--page);color:var(--ink-2);font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased}
+
+/* ── APP SHELL ── */
+.app{display:flex;height:100vh;overflow:hidden}
+
+/* ── SIDEBAR ── */
+.sidebar{
+  width:var(--sidebar);flex-shrink:0;
+  background:var(--surface);
+  border-right:1px solid var(--border);
+  display:flex;flex-direction:column;
+  height:100vh;overflow:hidden;
+}
+.sb-brand{
+  height:var(--topbar);display:flex;align-items:center;gap:10px;
+  padding:0 16px;border-bottom:1px solid var(--border);flex-shrink:0;
+}
+.sb-mark{
+  width:30px;height:30px;border-radius:8px;
+  background:var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.sb-mark svg{width:16px;height:16px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.sb-name{font-size:14px;font-weight:700;color:var(--ink);letter-spacing:-.2px}
+.sb-tagline{font-size:10px;color:var(--ink-4);margin-top:1px}
+
+.sb-nav{flex:1;overflow-y:auto;padding:8px;scrollbar-width:none}
+.sb-nav::-webkit-scrollbar{display:none}
+
+.sb-group-label{
+  font-size:10px;font-weight:600;color:var(--ink-4);
+  letter-spacing:.06em;text-transform:uppercase;
+  padding:12px 8px 5px;
+}
+.sb-item{
+  display:flex;align-items:center;gap:9px;
+  padding:8px 10px;border-radius:var(--r);
+  font-size:13px;font-weight:500;color:var(--ink-3);
+  cursor:pointer;transition:all .12s;user-select:none;
+  position:relative;
+}
+.sb-item:hover{background:var(--surface-2);color:var(--ink)}
+.sb-item.active{background:var(--accent-2);color:var(--accent)}
+.sb-item.active .sb-icon{color:var(--accent)}
+.sb-icon{width:15px;height:15px;flex-shrink:0;color:var(--ink-4)}
+.sb-icon svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;display:block}
+.sb-count{
+  margin-left:auto;font-size:10px;font-weight:700;
+  background:var(--red-bg);color:var(--red);
+  padding:1px 6px;border-radius:10px;display:none;
+}
+.sb-count.show{display:inline-block}
+
+.sb-footer{
+  padding:8px;border-top:1px solid var(--border);flex-shrink:0;
+}
+.sb-footer-btn{
+  display:flex;align-items:center;gap:9px;
+  width:100%;padding:8px 10px;border-radius:var(--r);
+  font-size:12px;font-weight:500;color:var(--ink-3);
+  background:none;border:none;cursor:pointer;transition:all .12s;
+}
+.sb-footer-btn:hover{background:var(--surface-2);color:var(--ink)}
+.sb-footer-btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;color:var(--ink-4)}
+
+/* ── CONTENT ── */
+.content{flex:1;min-width:0;display:flex;flex-direction:column;height:100vh;overflow:hidden}
+
+/* ── TOPBAR ── */
+.topbar{
+  height:var(--topbar);background:var(--surface);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 28px;gap:14px;flex-shrink:0;
+}
+.topbar-title{font-size:15px;font-weight:600;color:var(--ink);flex:1;letter-spacing:-.2px}
+.live-indicator{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-3)}
+.live-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;transition:background .3s}
+.ld-live{background:#12B76A}
+.ld-loading{background:var(--ink-5);animation:blink .9s ease-in-out infinite}
+.ld-error{background:var(--red)}
+@keyframes blink{0%,100%{opacity:.25}50%{opacity:1}}
+.tb-ts{font-size:11px;color:var(--ink-4)}
+.tb-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:7px 13px;border-radius:var(--r);
+  font-size:12px;font-weight:500;
+  background:var(--surface);border:1px solid var(--border-strong);
+  color:var(--ink-2);cursor:pointer;transition:all .12s;white-space:nowrap;
+}
+.tb-btn:hover{background:var(--surface-2);border-color:var(--border-strong)}
+.tb-btn svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+.tb-btn-accent{background:var(--accent);border-color:var(--accent);color:#fff}
+.tb-btn-accent:hover{background:#4A4ABF;border-color:#4A4ABF}
+.tb-auto-on{background:var(--accent-2);border-color:var(--accent-3);color:var(--accent)}
+.tb-auto-on:hover{background:var(--accent-2)}
+
+/* ── MAIN SCROLL ── */
+.main{flex:1;overflow-y:auto;padding:28px 28px 80px;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.main::-webkit-scrollbar{width:5px}
+.main::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+
+.page{display:none}.page.active{display:block}
+
+/* ── PAGE HEADER ── */
+.pg-header{margin-bottom:24px}
+.pg-title{font-size:20px;font-weight:700;color:var(--ink);letter-spacing:-.4px;margin-bottom:3px}
+.pg-sub{font-size:13px;color:var(--ink-3)}
+
+/* ── ERROR BANNER ── */
+.err-bar{
+  display:none;align-items:flex-start;gap:12px;
+  background:var(--red-bg);border:1px solid var(--red-dim);
+  border-radius:var(--r-lg);padding:14px 18px;margin-bottom:20px;
+  font-size:12px;color:var(--red);
+}
+.err-bar.show{display:flex}
+.err-bar strong{font-weight:700}
+.err-bar a{color:var(--red);font-weight:600;cursor:pointer;text-decoration:underline}
+.err-bar svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;margin-top:1px}
+
+/* ── OVERVIEW: MORNING STRIP ── */
+.morning-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px}
+.ms-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r-lg);padding:20px 20px 18px;
+  box-shadow:var(--shadow-xs);position:relative;overflow:hidden;
+}
+.ms-card-accent{position:absolute;top:0;left:0;right:0;height:3px;border-radius:var(--r-lg) var(--r-lg) 0 0}
+.ms-label{font-size:11px;font-weight:600;color:var(--ink-3);letter-spacing:.04em;text-transform:uppercase;margin-bottom:10px}
+.ms-value{font-size:34px;font-weight:700;color:var(--ink);line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.8px;margin-bottom:6px}
+.ms-value.v-red{color:var(--red)}
+.ms-value.v-green{color:var(--green)}
+.ms-value.v-blue{color:var(--blue)}
+.ms-delta{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;margin-bottom:4px}
+.md-good{background:var(--green-bg);color:var(--green)}
+.md-bad {background:var(--red-bg);  color:var(--red)}
+.md-flat{background:var(--surface-3);color:var(--ink-4)}
+.ms-hint{font-size:11px;color:var(--ink-4);margin-top:2px}
+
+/* ── OVERVIEW: CATEGORY SPLIT ── */
+.cat-split-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:28px}
+.cs-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r-lg);padding:18px 20px;box-shadow:var(--shadow-xs);
+  display:flex;align-items:flex-start;gap:14px;
+}
+.cs-icon-wrap{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.cs-icon-wrap svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+.cs-label{font-size:11px;font-weight:600;color:var(--ink-3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
+.cs-count{font-size:26px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:-.5px;line-height:1.1;margin-bottom:3px}
+.cs-meta{font-size:11px;color:var(--ink-4)}
+
+/* ── OVERVIEW: ATTENTION NEEDED ── */
+.attention-section{margin-bottom:28px}
+.section-title{font-size:14px;font-weight:600;color:var(--ink);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.attention-list{display:flex;flex-direction:column;gap:8px}
+.attention-item{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r-lg);padding:14px 18px;
+  display:flex;align-items:center;gap:14px;
+  box-shadow:var(--shadow-xs);cursor:pointer;transition:box-shadow .15s,border-color .15s;
+}
+.attention-item:hover{box-shadow:var(--shadow-sm);border-color:var(--border-strong)}
+.ai-icon{
+  width:36px;height:36px;border-radius:9px;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.ai-icon svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+.ai-body{flex:1;min-width:0}
+.ai-title{font-size:13px;font-weight:600;color:var(--ink);margin-bottom:2px}
+.ai-desc{font-size:12px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ai-badge{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;white-space:nowrap;flex-shrink:0}
+.ai-arrow{color:var(--ink-5);flex-shrink:0;font-size:16px}
+
+/* ── OVERVIEW: TEAM PULSE ── */
+.team-pulse{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+.tp-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r-lg);padding:14px 16px;
+  box-shadow:var(--shadow-xs);
+}
+.tp-name{font-size:12px;font-weight:600;color:var(--ink);text-transform:capitalize;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tp-cap{font-size:10px;font-weight:600;display:flex;align-items:center;gap:4px;margin-bottom:8px}
+.tp-dot{width:6px;height:6px;border-radius:50%}
+.tp-bar-wrap{display:flex;align-items:center;gap:7px}
+.tp-track{flex:1;height:4px;background:var(--surface-3);border-radius:2px;overflow:hidden}
+.tp-fill{height:100%;border-radius:2px;transition:width .4s}
+.tp-score{font-size:10px;font-weight:600;color:var(--ink-3);min-width:20px;text-align:right;font-variant-numeric:tabular-nums}
+.tp-cats{display:flex;gap:3px;margin-top:8px;flex-wrap:wrap}
+.tp-cat{font-size:9px;padding:1px 6px;border-radius:8px;border:1px solid;font-weight:500}
+
+/* ── CLIENT / POC CARDS ── */
+.delivery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px}
+.delivery-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r-lg);overflow:hidden;
+  box-shadow:var(--shadow-xs);transition:box-shadow .15s,border-color .15s;
+}
+.delivery-card:hover{box-shadow:var(--shadow-md);border-color:var(--border-strong)}
+.dc-header{
+  padding:16px 18px 14px;
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:flex-start;gap:12px;
+}
+.dc-avatar{
+  width:38px;height:38px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;font-weight:700;flex-shrink:0;
+  color:#fff;font-family:inherit;
+}
+.dc-name{font-size:14px;font-weight:700;color:var(--ink);margin-bottom:2px;letter-spacing:-.1px}
+.dc-type{font-size:11px;color:var(--ink-3)}
+.dc-risk{margin-left:auto;flex-shrink:0}
+.risk-badge{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;border:1px solid}
+.rb-red   {background:var(--red-bg);   color:var(--red);   border-color:var(--red-dim)}
+.rb-amber {background:var(--amber-bg); color:var(--amber); border-color:var(--amber-dim)}
+.rb-green {background:var(--green-bg); color:var(--green); border-color:var(--green-dim)}
+
+.dc-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border-bottom:1px solid var(--border)}
+.dc-stat{padding:12px 16px;text-align:center;border-right:1px solid var(--border)}
+.dc-stat:last-child{border-right:none}
+.dc-stat-val{font-size:18px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;line-height:1}
+.dc-stat-val.v-red{color:var(--red)}
+.dc-stat-val.v-amber{color:var(--amber)}
+.dc-stat-lbl{font-size:10px;color:var(--ink-4);margin-top:3px;font-weight:500}
+
+.dc-body{padding:14px 18px}
+.dc-assignees{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.dc-assignee{font-size:11px;font-weight:500;padding:2px 8px;border-radius:6px;background:var(--surface-2);color:var(--ink-2);border:1px solid var(--border);text-transform:capitalize}
+.dc-last{font-size:11px;color:var(--ink-4);display:flex;align-items:center;gap:5px}
+.dc-last svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.75}
+
+/* ── HEALTH BAR ── */
+.health-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.health-track{flex:1;height:5px;background:var(--surface-3);border-radius:3px;overflow:hidden}
+.health-fill{height:100%;border-radius:3px;transition:width .5s}
+.health-label{font-size:10px;font-weight:600;color:var(--ink-3);min-width:28px;text-align:right;font-variant-numeric:tabular-nums}
+
+/* ── PRODUCT GRID ── */
+.product-table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--shadow-xs)}
+.pt{width:100%;border-collapse:collapse}
+.pt th{
+  padding:10px 16px;text-align:left;
+  font-size:10px;font-weight:600;color:var(--ink-3);
+  letter-spacing:.06em;text-transform:uppercase;
+  background:var(--surface-2);border-bottom:1px solid var(--border);
+  white-space:nowrap;
+}
+.pt th.c{text-align:center}
+.pt td{
+  padding:11px 16px;font-size:12px;color:var(--ink-2);
+  border-bottom:1px solid var(--border);vertical-align:middle;
+}
+.pt tr:last-child td{border-bottom:none}
+.pt tr:hover td{background:var(--surface-2)}
+.pt td.c{text-align:center}
+.pt-title{font-size:13px;font-weight:600;color:var(--ink)}
+.pt-sub{font-size:11px;color:var(--ink-3);margin-top:1px}
+.status-pill{font-size:11px;font-weight:500;padding:2px 9px;border-radius:6px;border:1px solid;white-space:nowrap}
+.sp-ipqa  {background:var(--blue-bg);  color:var(--blue);  border-color:var(--blue-dim)}
+.sp-pv    {background:var(--amber-bg); color:var(--amber); border-color:var(--amber-dim)}
+.sp-rfp   {background:var(--green-bg); color:var(--green); border-color:var(--green-dim)}
+.sp-review{background:var(--purple-bg);color:var(--purple);border-color:var(--purple-dim)}
+.sp-todo  {background:var(--surface-3);color:var(--ink-3); border-color:var(--border)}
+.pri-badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;display:inline-block}
+.pb-p0{background:var(--red-bg);color:var(--red)}
+.pb-p1{background:var(--amber-bg);color:var(--amber)}
+.pb-lo{background:var(--surface-3);color:var(--ink-4)}
+.id-mono{font-family:'SF Mono','Fira Code',monospace;font-size:11px;color:var(--ink-4)}
+.member-name{text-transform:capitalize;font-weight:500;color:var(--ink-2)}
+.cat-tag{font-size:10px;font-weight:600;padding:2px 7px;border-radius:6px;border:1px solid;white-space:nowrap}
+.ct-client {background:var(--cat-client-bg); color:var(--cat-client); border-color:var(--accent-3)}
+.ct-poc    {background:var(--cat-poc-bg);    color:var(--cat-poc);    border-color:#B9E8FB}
+.ct-product{background:var(--cat-product-bg);color:var(--cat-product);border-color:var(--green-dim)}
+.ct-other  {background:var(--cat-other-bg);  color:var(--cat-other);  border-color:var(--border)}
+
+/* ── TEAM TABLE ── */
+.team-table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--shadow-xs)}
+.load-wrap{display:flex;align-items:center;gap:8px}
+.load-track{flex:1;height:4px;background:var(--surface-3);border-radius:2px;overflow:hidden;min-width:60px}
+.load-fill{height:100%;border-radius:2px;transition:width .4s}
+.load-num{font-size:11px;font-weight:600;color:var(--ink-3);min-width:24px;text-align:right;font-variant-numeric:tabular-nums}
+.cap-pill{font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px;white-space:nowrap;letter-spacing:.02em}
+.cp-avail{background:var(--green-bg);  color:var(--green)}
+.cp-norm {background:var(--blue-bg);   color:var(--blue)}
+.cp-busy {background:var(--amber-bg);  color:var(--amber)}
+.cp-over {background:var(--red-bg);    color:var(--red)}
+.zero{color:var(--ink-5)}
+.ws-dots{display:flex;gap:3px}
+.ws-dot-sm{width:8px;height:8px;border-radius:2px}
+
+/* ── SETTINGS PAGE ── */
+.settings-layout{display:grid;grid-template-columns:200px 1fr;gap:24px;align-items:start}
+.settings-nav{display:flex;flex-direction:column;gap:2px}
+.snav-item{
+  padding:8px 12px;border-radius:var(--r);font-size:13px;font-weight:500;
+  color:var(--ink-3);cursor:pointer;transition:all .12s;
+}
+.snav-item:hover{background:var(--surface-2);color:var(--ink)}
+.snav-item.active{background:var(--accent-2);color:var(--accent)}
+.settings-section{display:none}.settings-section.active{display:block}
+.settings-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:24px;box-shadow:var(--shadow-xs);margin-bottom:16px}
+.sc-title{font-size:15px;font-weight:700;color:var(--ink);margin-bottom:4px;letter-spacing:-.2px}
+.sc-desc{font-size:12px;color:var(--ink-3);margin-bottom:20px;line-height:1.6}
+.form-row{margin-bottom:16px}
+.form-label{display:block;font-size:12px;font-weight:600;color:var(--ink-2);margin-bottom:6px}
+.form-input{
+  width:100%;padding:9px 12px;font-size:13px;
+  background:var(--surface);border:1px solid var(--border-strong);
+  border-radius:var(--r);color:var(--ink);transition:border-color .15s;
+}
+.form-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-2)}
+.form-input.mono{font-family:'SF Mono','Fira Code',monospace;font-size:12px}
+.form-hint{font-size:11px;color:var(--ink-4);margin-top:5px;line-height:1.6}
+.form-hint code{background:var(--surface-3);padding:1px 5px;border-radius:4px;font-family:'SF Mono','Fira Code',monospace}
+.form-actions{display:flex;gap:8px;margin-top:20px}
+.btn-primary{padding:9px 20px;background:var(--accent);border:none;border-radius:var(--r);font-size:13px;font-weight:600;color:#fff;cursor:pointer;transition:background .15s}
+.btn-primary:hover{background:#4A4ABF}
+.btn-ghost{padding:9px 16px;background:none;border:1px solid var(--border-strong);border-radius:var(--r);font-size:13px;font-weight:500;color:var(--ink-2);cursor:pointer;transition:all .15s}
+.btn-ghost:hover{background:var(--surface-2)}
+
+/* Worker setup steps */
+.setup-steps{display:flex;flex-direction:column;gap:0}
+.step{display:flex;gap:16px;padding:0 0 20px}
+.step:last-child{padding-bottom:0}
+.step-num{
+  width:28px;height:28px;border-radius:50%;background:var(--accent);
+  color:#fff;font-size:12px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;
+}
+.step-body{}
+.step-title{font-size:13px;font-weight:600;color:var(--ink);margin-bottom:4px}
+.step-desc{font-size:12px;color:var(--ink-3);line-height:1.7}
+.step-code{
+  background:var(--ink);color:#E4E7EC;
+  border-radius:var(--r);padding:12px 16px;
+  font-family:'SF Mono','Fira Code',monospace;font-size:11px;line-height:1.7;
+  margin-top:8px;overflow-x:auto;white-space:pre;
+}
+.step-link{color:var(--accent);font-weight:500;text-decoration:none}
+.step-link:hover{text-decoration:underline}
+
+/* Classification rules */
+.rule-list{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.rule-row{display:grid;grid-template-columns:1fr 100px 32px;gap:8px;align-items:center}
+.rule-input{padding:7px 10px;font-size:12px;background:var(--surface);border:1px solid var(--border-strong);border-radius:var(--r);color:var(--ink)}
+.rule-input:focus{outline:none;border-color:var(--accent)}
+.rule-select{padding:7px 8px;font-size:12px;background:var(--surface);border:1px solid var(--border-strong);border-radius:var(--r);color:var(--ink);cursor:pointer}
+.rule-del{width:32px;height:32px;display:flex;align-items:center;justify-content:center;background:none;border:1px solid var(--border);border-radius:var(--r);cursor:pointer;color:var(--ink-4);transition:all .12s}
+.rule-del:hover{background:var(--red-bg);border-color:var(--red-dim);color:var(--red)}
+.add-rule-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r);font-size:12px;font-weight:500;color:var(--ink-2);cursor:pointer;transition:all .12s}
+.add-rule-btn:hover{background:var(--surface-3);border-color:var(--border-strong)}
+
+/* ── LOADING SCREEN ── */
+#loader{
+  position:fixed;inset:0;background:var(--surface);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:18px;z-index:9999;
+}
+.ldr-mark{width:52px;height:52px;background:var(--accent);border-radius:14px;display:flex;align-items:center;justify-content:center}
+.ldr-mark svg{width:26px;height:26px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ldr-name{font-size:18px;font-weight:700;color:var(--ink);letter-spacing:-.3px}
+.ldr-ring{width:32px;height:32px;border:2.5px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ldr-msg{font-size:12px;color:var(--ink-4)}
+
+/* ── EMPTY STATE ── */
+.empty{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:52px 24px;text-align:center;box-shadow:var(--shadow-xs)}
+.empty-title{font-size:15px;font-weight:600;color:var(--ink-3);margin-bottom:6px}
+.empty-desc{font-size:13px;color:var(--ink-4)}
+
+/* ── SKELETON ── */
+.sk{background:var(--surface-3);border-radius:var(--r);animation:sk 1.4s ease-in-out infinite}
+@keyframes sk{0%,100%{opacity:.5}50%{opacity:1}}
+
+/* ── DIVIDER ── */
+.divider{height:1px;background:var(--border);margin:24px 0}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loader">
+  <div class="ldr-mark"><svg viewBox="0 0 24 24"><polyline points="3,17 8,11 12,14 17,7 21,9"/></svg></div>
+  <div class="ldr-name">Control Tower</div>
+  <div class="ldr-ring"></div>
+  <div class="ldr-msg" id="ldr-msg">Starting up…</div>
+</div>
+
+<!-- APP -->
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sb-brand">
+      <div class="sb-mark"><svg viewBox="0 0 16 16"><polyline points="1,12 5,7 9,10 13,4"/></svg></div>
+      <div>
+        <div class="sb-name">Control Tower</div>
+        <div class="sb-tagline">ContextQA Operations</div>
+      </div>
+    </div>
+    <nav class="sb-nav">
+      <div class="sb-group-label">Operations</div>
+      <div class="sb-item active" data-page="overview" onclick="goTo('overview')">
+        <span class="sb-icon"><svg viewBox="0 0 16 16"><rect x="1.5" y="1.5" width="5" height="5" rx="1"/><rect x="9.5" y="1.5" width="5" height="5" rx="1"/><rect x="1.5" y="9.5" width="5" height="5" rx="1"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/></svg></span>
+        Overview
+      </div>
+      <div class="sb-item" data-page="clients" onclick="goTo('clients')">
+        <span class="sb-icon"><svg viewBox="0 0 16 16"><path d="M14 13v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1"/><circle cx="8" cy="5" r="3"/></svg></span>
+        Client delivery
+        <span class="sb-count" id="cnt-clients"></span>
+      </div>
+      <div class="sb-item" data-page="poc" onclick="goTo('poc')">
+        <span class="sb-icon"><svg viewBox="0 0 16 16"><path d="M2 11l4-4 3 3 5-6"/><circle cx="13" cy="3" r="1.5" fill="currentColor" stroke="none"/></svg></span>
+        POC &amp; prospects
+        <span class="sb-count" id="cnt-poc"></span>
+      </div>
+      <div class="sb-item" data-page="product" onclick="goTo('product')">
+        <span class="sb-icon"><svg viewBox="0 0 16 16"><rect x="1" y="1" width="14" height="14" rx="2"/><line x1="1" y1="6" x2="15" y2="6"/><line x1="6" y1="6" x2="6" y2="15"/></svg></span>
+        Product testing
+      </div>
+      <div class="sb-item" data-page="team" onclick="goTo('team')">
+        <span class="sb-icon"><svg viewBox="0 0 16 16"><circle cx="5.5" cy="5" r="2.5"/><circle cx="11" cy="5" r="2"/><path d="M0 14c0-3 2.5-5 5.5-5S11 11 11 14"/><path d="M11 7c2 0 4 1.5 4 4"/></svg></span>
+        Team &amp; capacity
+      </div>
+      <div class="sb-group-label" style="margin-top:8px">Config</div>
+      <div class="sb-item" data-page="settings" onclick="goTo('settings')">
+        <span class="sb-icon"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="2"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.42 1.42M11.53 11.53l1.42 1.42M3.05 12.95l1.42-1.42M11.53 4.47l1.42-1.42"/></svg></span>
+        Settings
+      </div>
+    </nav>
+    <div class="sb-footer">
+      <button class="sb-footer-btn" onclick="doRefresh()">
+        <svg viewBox="0 0 16 16"><path d="M13.5 2.5A6.5 6.5 0 1 1 8 1.5"/><polyline points="13.5 2.5 10 2.5 13.5 6"/></svg>
+        Refresh data
+      </button>
+    </div>
+  </aside>
+
+  <!-- CONTENT -->
+  <div class="content">
+    <header class="topbar">
+      <div class="topbar-title" id="tb-title">Overview</div>
+      <div class="live-indicator">
+        <span class="live-dot ld-loading" id="live-dot"></span>
+        <span id="live-text">Loading…</span>
+      </div>
+      <span class="tb-ts" id="tb-ts"></span>
+      <button class="tb-btn" id="auto-btn" onclick="toggleAuto()">
+        <svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><polyline points="8 5 8 8 10.5 10"/></svg>
+        Auto-refresh
+      </button>
+      <button class="tb-btn tb-btn-accent" onclick="doRefresh()">
+        <svg viewBox="0 0 16 16"><path d="M13.5 2.5A6.5 6.5 0 1 1 8 1.5"/><polyline points="13.5 2.5 10 2.5 13.5 6"/></svg>
+        Refresh
+      </button>
+    </header>
+
+    <main class="main" id="main-scroll">
+
+      <div class="err-bar" id="err-bar">
+        <svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><line x1="8" y1="5" x2="8" y2="8.5"/><circle cx="8" cy="11" r=".7" fill="currentColor"/></svg>
+        <div><strong>Could not load data.</strong> <span id="err-msg"></span> — <a onclick="goTo('settings')">Open settings →</a></div>
+      </div>
+
+      <!-- ── OVERVIEW ── -->
+      <div class="page active" id="page-overview">
+        <div class="pg-header">
+          <div class="pg-title">Good morning</div>
+          <div class="pg-sub" id="ov-sub">Here's what needs your attention today.</div>
+        </div>
+
+        <div class="morning-strip" id="morning-strip">
+          <div class="ms-card sk" style="height:110px"></div>
+          <div class="ms-card sk" style="height:110px"></div>
+          <div class="ms-card sk" style="height:110px"></div>
+          <div class="ms-card sk" style="height:110px"></div>
+        </div>
+
+        <div class="cat-split-row" id="cat-split">
+          <div class="cs-card sk" style="height:90px"></div>
+          <div class="cs-card sk" style="height:90px"></div>
+          <div class="cs-card sk" style="height:90px"></div>
+        </div>
+
+        <div class="attention-section">
+          <div class="section-title" id="attn-title">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1l1.6 3.2L13 5l-2.5 2.4.6 3.6L8 9.3 4.9 11l.6-3.6L3 5l3.4-.8z"/></svg>
+            Needs attention
+          </div>
+          <div class="attention-list" id="attn-list">
+            <div class="sk" style="height:64px;border-radius:12px"></div>
+            <div class="sk" style="height:64px;border-radius:12px"></div>
+          </div>
+        </div>
+
+        <div class="section-title">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="5" r="2.5"/><circle cx="11" cy="5" r="2"/><path d="M0 14c0-3 2.5-5 5.5-5S11 11 11 14"/><path d="M11 7c2 0 4 1.5 4 4"/></svg>
+          Team pulse
+        </div>
+        <div class="team-pulse" id="team-pulse"></div>
+      </div>
+
+      <!-- ── CLIENTS ── -->
+      <div class="page" id="page-clients">
+        <div class="pg-header">
+          <div class="pg-title">Client delivery</div>
+          <div class="pg-sub">Delivery risk and issue status per client account.</div>
+        </div>
+        <div class="delivery-grid" id="client-grid"></div>
+      </div>
+
+      <!-- ── POC ── -->
+      <div class="page" id="page-poc">
+        <div class="pg-header">
+          <div class="pg-title">POC &amp; prospects</div>
+          <div class="pg-sub">Active proof-of-concept and prospect evaluation work.</div>
+        </div>
+        <div class="delivery-grid" id="poc-grid"></div>
+      </div>
+
+      <!-- ── PRODUCT ── -->
+      <div class="page" id="page-product">
+        <div class="pg-header">
+          <div class="pg-title">Product testing</div>
+          <div class="pg-sub">Internal product feature testing and QA work.</div>
+        </div>
+        <div class="product-table-wrap">
+          <table class="pt">
+            <thead>
+              <tr>
+                <th>Issue</th>
+                <th>Status</th>
+                <th class="c">Priority</th>
+                <th>Assignee</th>
+                <th class="c">Age</th>
+              </tr>
+            </thead>
+            <tbody id="product-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── TEAM ── -->
+      <div class="page" id="page-team">
+        <div class="pg-header">
+          <div class="pg-title">Team &amp; capacity</div>
+          <div class="pg-sub">Workload scores and capacity status for every QA member.</div>
+        </div>
+        <div class="team-table-wrap">
+          <table class="pt">
+            <thead>
+              <tr>
+                <th>Member</th>
+                <th>Work categories</th>
+                <th class="c">Issues</th>
+                <th class="c">P0</th>
+                <th class="c">P1</th>
+                <th class="c">In progress</th>
+                <th class="c">Ready</th>
+                <th>Load score</th>
+                <th class="c">Capacity</th>
+              </tr>
+            </thead>
+            <tbody id="team-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── SETTINGS ── -->
+      <div class="page" id="page-settings">
+        <div class="pg-header">
+          <div class="pg-title">Settings</div>
+          <div class="pg-sub">Configure your Linear connection and work classification rules.</div>
+        </div>
+        <div class="settings-layout">
+          <div class="settings-nav">
+            <div class="snav-item active" onclick="settingsTab('connection')">Connection</div>
+            <div class="snav-item" onclick="settingsTab('classification')">Classification rules</div>
+            <div class="snav-item" onclick="settingsTab('clients-cfg')">Client list</div>
+          </div>
+          <div style="min-width:0">
+
+            <!-- Connection -->
+            <div class="settings-section active" id="ss-connection">
+              <div class="settings-card">
+                <div class="sc-title">Cloudflare Worker setup</div>
+                <div class="sc-desc">The dashboard reads live data from Linear via a Cloudflare Worker you deploy in minutes. It's free — Cloudflare's free plan includes 100,000 requests/day.</div>
+                <div class="setup-steps">
+                  <div class="step">
+                    <div class="step-num">1</div>
+                    <div class="step-body">
+                      <div class="step-title">Create a free Cloudflare account</div>
+                      <div class="step-desc">Go to <a class="step-link" href="https://workers.cloudflare.com" target="_blank">workers.cloudflare.com</a> and sign up for free. No credit card required.</div>
+                    </div>
+                  </div>
+                  <div class="step">
+                    <div class="step-num">2</div>
+                    <div class="step-body">
+                      <div class="step-title">Create a new Worker</div>
+                      <div class="step-desc">In the Cloudflare dashboard → Workers &amp; Pages → Create → Worker. Name it anything (e.g. <code>cqa-linear-proxy</code>).</div>
+                    </div>
+                  </div>
+                  <div class="step">
+                    <div class="step-num">3</div>
+                    <div class="step-body">
+                      <div class="step-title">Paste the Worker code</div>
+                      <div class="step-desc">Click "Edit code", replace everything with the code from <code>worker.js</code> (provided alongside this dashboard file). Deploy it.</div>
+                    </div>
+                  </div>
+                  <div class="step">
+                    <div class="step-num">4</div>
+                    <div class="step-body">
+                      <div class="step-title">Add your Linear API key</div>
+                      <div class="step-desc">In your Worker → Settings → Variables → Add variable:<br>Name: <code>LINEAR_API_KEY</code> &nbsp;Value: your Linear API key (Settings → API in Linear).</div>
+                    </div>
+                  </div>
+                  <div class="step">
+                    <div class="step-num">5</div>
+                    <div class="step-body">
+                      <div class="step-title">Paste your Worker URL below</div>
+                      <div class="step-desc">Your Worker URL looks like <code>https://cqa-linear-proxy.yourname.workers.dev</code></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="settings-card">
+                <div class="sc-title">Worker URL</div>
+                <div class="sc-desc">Paste your Cloudflare Worker URL. This is saved in your browser.</div>
+                <div class="form-row">
+                  <label class="form-label">Worker URL</label>
+                  <input class="form-input mono" id="cfg-url" type="text" placeholder="https://cqa-linear-proxy.yourname.workers.dev">
+                </div>
+                <div class="form-row">
+                  <label class="form-label">Auto-refresh every (minutes — 0 to disable)</label>
+                  <input class="form-input" id="cfg-interval" type="number" min="0" max="60" value="5" style="width:80px">
+                </div>
+                <div class="form-actions">
+                  <button class="btn-primary" onclick="saveConnection()">Save &amp; connect</button>
+                  <button class="btn-ghost" onclick="testConnection()">Test connection</button>
+                </div>
+                <div id="conn-test-result" style="margin-top:12px;font-size:12px;display:none"></div>
+              </div>
+            </div>
+
+            <!-- Classification rules -->
+            <div class="settings-section" id="ss-classification">
+              <div class="settings-card">
+                <div class="sc-title">Work classification rules</div>
+                <div class="sc-desc">The dashboard uses these rules to classify each Linear issue into Client Delivery, POC/Prospect, or Product Testing. Rules are matched against the issue title, labels, and project name. First matching rule wins.</div>
+                <div class="rule-list" id="rule-list"></div>
+                <button class="add-rule-btn" onclick="addRule()">
+                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="8" y1="2" x2="8" y2="14"/><line x1="2" y1="8" x2="14" y2="8"/></svg>
+                  Add rule
+                </button>
+                <div class="form-actions">
+                  <button class="btn-primary" onclick="saveRules()">Save rules</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Client list -->
+            <div class="settings-section" id="ss-clients-cfg">
+              <div class="settings-card">
+                <div class="sc-title">Client list override</div>
+                <div class="sc-desc">The dashboard auto-detects clients from your Linear projects and labels. You can also manually add client names here — useful when client names appear in issue titles rather than as structured fields.</div>
+                <div class="form-row">
+                  <label class="form-label">Known client names (one per line)</label>
+                  <textarea class="form-input" id="cfg-clients" rows="8" placeholder="Acme Corp&#10;TechStartup Inc&#10;GlobalRetail"></textarea>
+                  <div class="form-hint">The dashboard will match these names against issue titles, labels, and project names to identify client work.</div>
+                </div>
+                <div class="form-actions">
+                  <button class="btn-primary" onclick="saveClients()">Save client list</button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* ═══════════════════════════════════
+   STORAGE KEYS
+═══════════════════════════════════ */
+const K = {
+  cfg:     'cqct_cfg',
+  snap:    'cqct_snap',
+  rules:   'cqct_rules',
+  clients: 'cqct_clients',
+};
+
+/* ═══════════════════════════════════
+   DEFAULT CLASSIFICATION RULES
+   Users can override in Settings
+═══════════════════════════════════ */
+const DEFAULT_RULES = [
+  { keyword:'poc',        category:'poc'     },
+  { keyword:'prospect',   category:'poc'     },
+  { keyword:'trial',      category:'poc'     },
+  { keyword:'product',    category:'product' },
+  { keyword:'feature',    category:'product' },
+  { keyword:'testing',    category:'product' },
+  { keyword:'internal',   category:'product' },
+  { keyword:'client',     category:'client'  },
+  { keyword:'delivery',   category:'client'  },
+];
+
+/* ═══════════════════════════════════
+   CONFIG HELPERS
+═══════════════════════════════════ */
+function getCfg()     { return JSON.parse(localStorage.getItem(K.cfg) || '{"url":"","interval":5}'); }
+function getRules()   { return JSON.parse(localStorage.getItem(K.rules) || 'null') || DEFAULT_RULES; }
+function getClients() { return (localStorage.getItem(K.clients)||'').split('\n').map(s=>s.trim()).filter(Boolean); }
+function loadSnap()   { try{return JSON.parse(localStorage.getItem(K.snap)||'null');}catch{return null;} }
+
+function istDate()    { return new Date(Date.now()+5.5*3600000).toISOString().slice(0,10); }
+function ageDays(d)   { return Math.floor((Date.now()-new Date(d).getTime())/86400000); }
+
+/* ═══════════════════════════════════
+   LINEAR GRAPHQL
+═══════════════════════════════════ */
+function gql(after) {
+  const c = after ? `, after:"${after}"` : '';
+  return `{
+    issues(first:250${c}, filter:{state:{type:{nin:["completed","cancelled"]}}}) {
+      pageInfo { hasNextPage endCursor }
+      nodes {
+        id identifier title priority
+        state { name type }
+        assignee { name displayName }
+        project { name }
+        labels { nodes { name } }
+        team { name key }
+        createdAt updatedAt
+      }
+    }
+  }`;
+}
+
+async function fetchIssues() {
+  const { url } = getCfg();
+  if (!url) throw new Error('No Worker URL configured. Go to Settings → Connection to set it up.');
+  let all=[], cursor=null, page=0;
+  while(true) {
+    page++;
+    setLdrMsg(`Fetching from Linear — page ${page}…`);
+    const r = await fetch(url, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({query:gql(cursor)})
+    });
+    if(!r.ok) throw new Error(`Worker returned HTTP ${r.status}. Check your Worker URL in Settings.`);
+    const j = await r.json();
+    if(j.errors) throw new Error(j.errors[0].message);
+    const d = j.data.issues;
+    all = all.concat(d.nodes);
+    if(!d.pageInfo.hasNextPage || page>=15) break;
+    cursor = d.pageInfo.endCursor;
+  }
+  return all;
+}
+
+/* ═══════════════════════════════════
+   CLASSIFICATION ENGINE
+═══════════════════════════════════ */
+function classifyIssue(iss) {
+  const rules    = getRules();
+  const clients  = getClients();
+  const hay = [
+    iss.title||'',
+    iss.project?.name||'',
+    iss.team?.name||'',
+    ...(iss.labels?.nodes||[]).map(l=>l.name)
+  ].join(' ').toLowerCase();
+
+  // Client name match takes priority if we have a list
+  for(const cl of clients) {
+    if(cl && hay.includes(cl.toLowerCase())) return { category:'client', entity:cl };
+  }
+
+  // Rule-based
+  for(const rule of rules) {
+    if(rule.keyword && hay.includes(rule.keyword.toLowerCase())) {
+      return { category:rule.category, entity:null };
+    }
+  }
+
+  // Auto-detect entity name from project
+  const proj = iss.project?.name;
+  if(proj) return { category:'client', entity:proj };
+
+  return { category:'other', entity:null };
+}
+
+/* ═══════════════════════════════════
+   WORKLOAD SCORING
+═══════════════════════════════════ */
+const SCORE_W = {
+  'In Progress QA':3,'Production Validation':2,'Ready For Prod':1,
+  'In Review':1,'In Progress Dev':1.5,'Todo':0.5,'Backlog':0.3
+};
+const CAP_T = { available:3, normal:8, busy:12 };
+
+function scoreIssues(issues) {
+  let sc = 0;
+  for(const i of issues) {
+    const b = SCORE_W[i.state?.name]||0; if(!b) continue;
+    const age = ageDays(i.createdAt);
+    sc += b + (age>14?3:age>7?2:age>3?1:0);
+  }
+  return Math.round(sc*10)/10;
+}
+function capLabel(s) {
+  return s<=CAP_T.available?'Available':s<=CAP_T.normal?'Normal':s<=CAP_T.busy?'Busy':'Overloaded';
+}
+const CAP_CLR = { Available:'#12B76A', Normal:'#175CD3', Busy:'#B54708', Overloaded:'#D92D20' };
+const CAP_CLS = { Available:'cp-avail', Normal:'cp-norm', Busy:'cp-busy', Overloaded:'cp-over' };
+
+/* ═══════════════════════════════════
+   PROCESS ISSUES → DATA MODEL
+═══════════════════════════════════ */
+function processIssues(issues) {
+  const members = {};   // name → { issues, categories, score, cap }
+  const entities = {};  // "client:Acme" → { name, category, issues, assignees }
+  const cats = { client:[], poc:[], product:[], other:[] };
+
+  for(const iss of issues) {
+    const { category, entity } = classifyIssue(iss);
+    const cls = { ...iss, _cat:category, _entity:entity };
+    cats[category].push(cls);
+
+    // Entity grouping (clients + POCs)
+    const entKey = entity
+      ? `${category}:${entity.toLowerCase()}`
+      : `${category}:__ungrouped__`;
+
+    if(!entities[entKey]) entities[entKey] = {
+      name: entity || '(Unassigned project)',
+      category, issues:[], assignees:new Set()
+    };
+    entities[entKey].issues.push(cls);
+
+    // Member map
+    const mName = (iss.assignee?.displayName||iss.assignee?.name||'Unassigned').toLowerCase().trim();
+    if(!members[mName]) members[mName] = { issues:[], cats:new Set() };
+    members[mName].issues.push(cls);
+    members[mName].cats.add(category);
+    if(iss.assignee) entities[entKey].assignees.add(mName);
+  }
+
+  // Score members
+  for(const [n,m] of Object.entries(members)) {
+    m.score = scoreIssues(m.issues);
+    m.cap   = capLabel(m.score);
+  }
+
+  // Health score for entities (0-100, higher = healthier)
+  for(const e of Object.values(entities)) {
+    const issues  = e.issues;
+    const total   = issues.length || 1;
+    const p0      = issues.filter(i=>i.priority===1).length;
+    const aging   = issues.filter(i=>ageDays(i.createdAt)>7).length;
+    const active  = issues.filter(i=>['In Progress QA','In Progress Dev','In Review'].includes(i.state?.name)).length;
+    const blocker = issues.filter(i=>ageDays(i.updatedAt)>3&&['In Progress QA','In Progress Dev'].includes(i.state?.name)).length;
+    const lastAct = issues.reduce((mx,i)=>Math.max(mx,new Date(i.updatedAt).getTime()),0);
+    e.lastActivity = lastAct;
+    e.lastActivityDays = ageDays(new Date(lastAct).toISOString());
+    e.p0 = p0; e.aging = aging; e.active = active; e.blocker = blocker;
+
+    let score = 100;
+    score -= p0 * 15;
+    score -= aging * 5;
+    score -= blocker * 8;
+    if(e.lastActivityDays > 3) score -= 10;
+    if(active === 0 && total > 0) score -= 15;
+    e.health = Math.max(0, Math.min(100, Math.round(score)));
+    e.risk   = e.health >= 70 ? 'Low' : e.health >= 45 ? 'Medium' : 'High';
+  }
+
+  return { members, entities, cats, total:issues.length };
+}
+
+/* ═══════════════════════════════════
+   SNAPSHOT
+═══════════════════════════════════ */
+function saveSnap(data) {
+  const snap = {
+    _date: istDate(),
+    total: data.total,
+    p0: data.cats.client.concat(data.cats.poc,data.cats.product,data.cats.other).filter(i=>i.priority===1).length,
+    released: data.cats.client.concat(data.cats.poc,data.cats.product,data.cats.other).filter(i=>i.state?.name==='Released To Prod'||i.state?.name==='Released').length,
+  };
+  localStorage.setItem(K.snap, JSON.stringify(snap));
+}
+
+/* ═══════════════════════════════════
+   RENDER HELPERS
+═══════════════════════════════════ */
+function statusPill(s) {
+  const l = (s||'').toLowerCase();
+  if(l.includes('in progress qa'))        return `<span class="status-pill sp-ipqa">In progress QA</span>`;
+  if(l.includes('production validation')) return `<span class="status-pill sp-pv">Prod validation</span>`;
+  if(l.includes('ready for prod'))        return `<span class="status-pill sp-rfp">Ready for prod</span>`;
+  if(l.includes('in review'))             return `<span class="status-pill sp-review">In review</span>`;
+  if(l.includes('in progress dev'))       return `<span class="status-pill sp-ipqa">In progress Dev</span>`;
+  return `<span class="status-pill sp-todo">${s||'—'}</span>`;
+}
+
+function priBadge(p) {
+  if(p===1) return `<span class="pri-badge pb-p0">P0</span>`;
+  if(p===2) return `<span class="pri-badge pb-p1">P1</span>`;
+  return `<span class="pri-badge pb-lo">P${p||'—'}</span>`;
+}
+
+function catTag(c) {
+  const map = {client:'ct-client Client',poc:'ct-poc POC',product:'ct-product Product',other:'ct-other Other'};
+  const [cls,lbl] = (map[c]||'ct-other Other').split(' ');
+  return `<span class="cat-tag ${cls}">${lbl}</span>`;
+}
+
+function avatarColor(name) {
+  const colors = ['#5B5BD6','#0BA5EC','#12B76A','#F79009','#EF4444','#8B5CF6','#EC4899','#06B6D4'];
+  let h = 0; for(let i=0;i<name.length;i++) h = name.charCodeAt(i) + ((h<<5)-h);
+  return colors[Math.abs(h) % colors.length];
+}
+
+function initials(name) {
+  return name.replace(/[^a-z ]/gi,'').trim().split(/\s+/).slice(0,2).map(w=>w[0]||'').join('').toUpperCase() || '?';
+}
+
+function healthColor(h) {
+  return h>=70?'var(--green)':h>=45?'var(--amber)':'var(--red)';
+}
+
+function delta(now, prev, label, posGood) {
+  if(!prev) return '';
+  const d = now - prev;
+  if(d===0) return `<span class="ms-delta md-flat">No change</span>`;
+  const good = posGood ? d<0 : d>0;
+  const cls  = good ? 'md-good' : 'md-bad';
+  const arrow = d>0 ? '↑' : '↓';
+  return `<span class="ms-delta ${cls}">${arrow} ${Math.abs(d)} ${label}</span>`;
+}
+
+/* ═══════════════════════════════════
+   RENDER — OVERVIEW
+═══════════════════════════════════ */
+function renderOverview(data) {
+  const snap = loadSnap();
+  const allIssues = Object.values(data.cats).flat();
+  const p0  = allIssues.filter(i=>i.priority===1).length;
+  const rel = allIssues.filter(i=>(i.state?.name||'').toLowerCase().includes('released')).length;
+  const rdy = allIssues.filter(i=>(i.state?.name||'').toLowerCase().includes('ready for prod')).length;
+  const over= Object.values(data.members).filter(m=>m.cap==='Overloaded').length;
+  const avail=Object.values(data.members).filter(m=>m.cap==='Available').length;
+
+  document.getElementById('ov-sub').textContent =
+    `${data.total} active issues · ${Object.keys(data.members).filter(n=>n!=='unassigned').length} team members · ${istDate()}`;
+
+  document.getElementById('morning-strip').innerHTML = `
+    <div class="ms-card sc-total" style="">
+      <div class="ms-card-accent" style="background:var(--accent)"></div>
+      <div class="ms-label">Active issues</div>
+      <div class="ms-value">${data.total}</div>
+      ${delta(data.total,snap?.total,'vs yesterday',true)}
+      <div class="ms-hint">Across all work categories</div>
+    </div>
+    <div class="ms-card">
+      <div class="ms-card-accent" style="background:var(--red)"></div>
+      <div class="ms-label">P0 urgent</div>
+      <div class="ms-value v-red">${p0}</div>
+      <div class="ms-hint">Require immediate action</div>
+    </div>
+    <div class="ms-card">
+      <div class="ms-card-accent" style="background:var(--green)"></div>
+      <div class="ms-label">Released today</div>
+      <div class="ms-value v-green">${rel}</div>
+      ${delta(rel,snap?.released,'vs yesterday',false)}
+      <div class="ms-hint">Shipped to production</div>
+    </div>
+    <div class="ms-card">
+      <div class="ms-card-accent" style="background:var(--amber)"></div>
+      <div class="ms-label">Overloaded</div>
+      <div class="ms-value" style="color:var(--amber)">${over}</div>
+      <div class="ms-hint">${avail} member${avail!==1?'s':''} available for work</div>
+    </div>`;
+
+  const clientC  = data.cats.client.length;
+  const pocC     = data.cats.poc.length;
+  const productC = data.cats.product.length;
+  const clientAt = Object.values(data.entities).filter(e=>e.category==='client'&&e.risk==='High').length;
+  const pocAt    = Object.values(data.entities).filter(e=>e.category==='poc'&&e.risk==='High').length;
+
+  document.getElementById('cat-split').innerHTML = `
+    <div class="cs-card">
+      <div class="cs-icon-wrap" style="background:var(--cat-client-bg);color:var(--cat-client)">
+        <svg viewBox="0 0 16 16"><path d="M14 13v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1"/><circle cx="8" cy="5" r="3"/></svg>
+      </div>
+      <div>
+        <div class="cs-label">Client delivery</div>
+        <div class="cs-count">${clientC}</div>
+        <div class="cs-meta">${clientAt > 0 ? `<span style="color:var(--red);font-weight:600">${clientAt} at risk</span>` : 'All on track'}</div>
+      </div>
+    </div>
+    <div class="cs-card">
+      <div class="cs-icon-wrap" style="background:var(--cat-poc-bg);color:var(--cat-poc)">
+        <svg viewBox="0 0 16 16"><path d="M2 11l4-4 3 3 5-6"/><circle cx="13" cy="3" r="1.5" fill="currentColor" stroke="none"/></svg>
+      </div>
+      <div>
+        <div class="cs-label">POC &amp; prospects</div>
+        <div class="cs-count">${pocC}</div>
+        <div class="cs-meta">${pocAt > 0 ? `<span style="color:var(--red);font-weight:600">${pocAt} at risk</span>` : 'All on track'}</div>
+      </div>
+    </div>
+    <div class="cs-card">
+      <div class="cs-icon-wrap" style="background:var(--cat-product-bg);color:var(--cat-product)">
+        <svg viewBox="0 0 16 16"><rect x="1" y="1" width="14" height="14" rx="2"/><line x1="1" y1="6" x2="15" y2="6"/><line x1="6" y1="6" x2="6" y2="15"/></svg>
+      </div>
+      <div>
+        <div class="cs-label">Product testing</div>
+        <div class="cs-count">${productC}</div>
+        <div class="cs-meta">${allIssues.filter(i=>i._cat==='product'&&i.priority===1).length} P0 issues</div>
+      </div>
+    </div>`;
+
+  /* Attention items */
+  const attnItems = [];
+
+  // High-risk clients
+  const highRiskClients = Object.values(data.entities)
+    .filter(e=>e.category==='client'&&e.risk==='High')
+    .sort((a,b)=>a.health-b.health).slice(0,3);
+  for(const e of highRiskClients) {
+    attnItems.push({
+      icon:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 13v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1"/><circle cx="8" cy="5" r="3"/></svg>`,
+      iconBg:'var(--red-bg)',iconClr:'var(--red)',
+      title:`${e.name} — client at risk`,
+      desc:`${e.issues.length} active issues · ${e.p0} P0 · health score ${e.health}`,
+      badge:`High risk`,badgeCls:'rb-red',
+      page:'clients',
+    });
+  }
+
+  // Overloaded members
+  const overloaded = Object.entries(data.members).filter(([n,m])=>m.cap==='Overloaded'&&n!=='unassigned');
+  if(overloaded.length) attnItems.push({
+    icon:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="5" r="2.5"/><circle cx="11" cy="5" r="2"/><path d="M0 14c0-3 2.5-5 5.5-5S11 11 11 14"/><path d="M11 7c2 0 4 1.5 4 4"/></svg>`,
+    iconBg:'var(--amber-bg)',iconClr:'var(--amber)',
+    title:`${overloaded.length} team member${overloaded.length>1?'s are':' is'} overloaded`,
+    desc:overloaded.slice(0,4).map(([n])=>n).join(', ')+(overloaded.length>4?` +${overloaded.length-4} more`:''),
+    badge:`${overloaded.length} overloaded`,badgeCls:'rb-amber',
+    page:'team',
+  });
+
+  // P0 issues
+  if(p0>0) attnItems.push({
+    icon:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1l1.6 3.2L13 5l-2.5 2.4.6 3.6L8 9.3 4.9 11l.6-3.6L3 5l3.4-.8z"/></svg>`,
+    iconBg:'var(--red-bg)',iconClr:'var(--red)',
+    title:`${p0} P0 urgent issue${p0>1?'s':''} open`,
+    desc:'Require immediate attention',
+    badge:`${p0} urgent`,badgeCls:'rb-red',
+    page:'clients',
+  });
+
+  // Aging issues
+  const aging = allIssues.filter(i=>ageDays(i.createdAt)>7).length;
+  if(aging>0) attnItems.push({
+    icon:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><polyline points="8 5 8 8 10.5 10"/></svg>`,
+    iconBg:'var(--purple-bg)',iconClr:'var(--purple)',
+    title:`${aging} issue${aging>1?'s are':' is'} aging past 7 days`,
+    desc:'No status movement in over a week',
+    badge:`${aging} aging`,badgeCls:'rb-amber',
+    page:'team',
+  });
+
+  if(!attnItems.length) attnItems.push({
+    icon:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 9 6 14 15 2"/></svg>`,
+    iconBg:'var(--green-bg)',iconClr:'var(--green)',
+    title:'Everything looks healthy',
+    desc:'No urgent items requiring your attention right now.',
+    badge:'All clear',badgeCls:'rb-green',
+    page:'overview',
+  });
+
+  document.getElementById('attn-title').innerHTML = `
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1l1.6 3.2L13 5l-2.5 2.4.6 3.6L8 9.3 4.9 11l.6-3.6L3 5l3.4-.8z"/></svg>
+    Needs attention <span style="font-size:12px;font-weight:500;color:var(--ink-4)">(${attnItems.length})</span>`;
+
+  document.getElementById('attn-list').innerHTML = attnItems.map(a=>`
+    <div class="attention-item" onclick="goTo('${a.page}')">
+      <div class="ai-icon" style="background:${a.iconBg};color:${a.iconClr}">${a.icon}</div>
+      <div class="ai-body">
+        <div class="ai-title">${a.title}</div>
+        <div class="ai-desc">${a.desc}</div>
+      </div>
+      <span class="ai-badge risk-badge ${a.badgeCls}">${a.badge}</span>
+      <span class="ai-arrow">›</span>
+    </div>`).join('');
+
+  /* Team pulse */
+  const membersSorted = Object.entries(data.members)
+    .filter(([n])=>n!=='unassigned')
+    .sort((a,b)=>b[1].score-a[1].score);
+  const maxSc = Math.max(...membersSorted.map(([,m])=>m.score),1);
+
+  document.getElementById('team-pulse').innerHTML = membersSorted.map(([name,m])=>{
+    const fillPct = Math.round(m.score/maxSc*100);
+    const clr = CAP_CLR[m.cap];
+    const cats = [...m.cats].filter(c=>c!=='other');
+    return `<div class="tp-card">
+      <div class="tp-name">${name}</div>
+      <div class="tp-cap" style="color:${clr}">
+        <span class="tp-dot" style="background:${clr}"></span>
+        ${m.cap} · ${m.issues.length} issues
+      </div>
+      <div class="tp-bar-wrap">
+        <div class="tp-track"><div class="tp-fill" style="width:${fillPct}%;background:${clr}"></div></div>
+        <span class="tp-score">${m.score}</span>
+      </div>
+      <div class="tp-cats">${cats.map(c=>{
+        const map={client:'ct-client Client',poc:'ct-poc POC',product:'ct-product Product'};
+        const [cls,lbl]=(map[c]||'ct-other Other').split(' ');
+        return `<span class="tp-cat ${cls}">${lbl}</span>`;
+      }).join('')}</div>
+    </div>`;
+  }).join('');
+}
+
+/* ═══════════════════════════════════
+   RENDER — DELIVERY CARDS (clients & POC)
+═══════════════════════════════════ */
+function renderDeliveryGrid(entities, category, elId) {
+  const items = Object.values(entities)
+    .filter(e=>e.category===category&&e.name!=='(Unassigned project)')
+    .sort((a,b)=>a.health-b.health);
+
+  const el = document.getElementById(elId);
+  if(!items.length) {
+    el.innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="empty-title">No ${category==='client'?'client':'POC'} work found</div><div class="empty-desc">Issues will appear here once classified. Check your classification rules in Settings.</div></div>`;
+    return;
+  }
+
+  const riskBadge = r => r==='High'?'rb-red':r==='Medium'?'rb-amber':'rb-green';
+  const clr = category==='client'?'var(--cat-client)':'var(--cat-poc)';
+
+  el.innerHTML = items.map(e=>{
+    const hClr = healthColor(e.health);
+    const lastActLabel = e.lastActivityDays===0 ? 'Today' : e.lastActivityDays===1 ? 'Yesterday' : `${e.lastActivityDays}d ago`;
+    const assigneeList = [...e.assignees].slice(0,5);
+    return `<div class="delivery-card">
+      <div class="dc-header">
+        <div class="dc-avatar" style="background:${avatarColor(e.name)}">${initials(e.name)}</div>
+        <div style="flex:1;min-width:0">
+          <div class="dc-name">${e.name}</div>
+          <div class="dc-type">${category==='client'?'Client delivery':'POC / prospect'}</div>
+        </div>
+        <div class="dc-risk"><span class="risk-badge ${riskBadge(e.risk)}">${e.risk} risk</span></div>
+      </div>
+      <div class="dc-stats">
+        <div class="dc-stat">
+          <div class="dc-stat-val ${e.issues.length>10?'v-red':''}">${e.issues.length}</div>
+          <div class="dc-stat-lbl">Active issues</div>
+        </div>
+        <div class="dc-stat">
+          <div class="dc-stat-val ${e.p0>0?'v-red':''}">${e.p0}</div>
+          <div class="dc-stat-lbl">P0 urgent</div>
+        </div>
+        <div class="dc-stat">
+          <div class="dc-stat-val ${e.aging>2?'v-amber':''}">${e.aging}</div>
+          <div class="dc-stat-lbl">Aging (7d+)</div>
+        </div>
+      </div>
+      <div class="dc-body">
+        <div class="health-row">
+          <div class="health-track"><div class="health-fill" style="width:${e.health}%;background:${hClr}"></div></div>
+          <span class="health-label">${e.health}</span>
+        </div>
+        <div class="dc-assignees">${assigneeList.map(a=>`<span class="dc-assignee">${a}</span>`).join('')}</div>
+        <div class="dc-last">
+          <svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><polyline points="8 5 8 8 10.5 10"/></svg>
+          Last activity: ${lastActLabel}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ═══════════════════════════════════
+   RENDER — PRODUCT TABLE
+═══════════════════════════════════ */
+function renderProduct(cats) {
+  const issues = cats.product.sort((a,b)=>(a.priority||9)-(b.priority||9)||ageDays(a.createdAt)-ageDays(b.createdAt));
+  const tbody = document.getElementById('product-tbody');
+  if(!issues.length) {
+    tbody.innerHTML = `<tr><td colspan="5"><div class="empty"><div class="empty-title">No product testing issues found</div><div class="empty-desc">Adjust your classification rules in Settings to capture product work.</div></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = issues.map(i=>{
+    const age = ageDays(i.createdAt);
+    const assignee = (i.assignee?.displayName||i.assignee?.name||'—').toLowerCase();
+    return `<tr>
+      <td>
+        <div class="id-mono">${i.identifier||''}</div>
+        <div class="pt-title">${i.title||''}</div>
+        <div class="pt-sub">${i.project?.name||i.team?.name||''}</div>
+      </td>
+      <td>${statusPill(i.state?.name)}</td>
+      <td class="c">${priBadge(i.priority)}</td>
+      <td class="member-name">${assignee}</td>
+      <td class="c"><span style="font-size:12px;font-weight:600;color:${age>7?'var(--red)':age>3?'var(--amber)':'var(--ink-3)'}">${age}d</span></td>
+    </tr>`;
+  }).join('');
+}
+
+/* ═══════════════════════════════════
+   RENDER — TEAM TABLE
+═══════════════════════════════════ */
+function renderTeam(members) {
+  const sorted = Object.entries(members)
+    .filter(([n])=>n!=='unassigned')
+    .sort((a,b)=>b[1].score-a[1].score);
+  const maxSc = Math.max(...sorted.map(([,m])=>m.score),1);
+
+  document.getElementById('team-tbody').innerHTML = sorted.map(([name,m])=>{
+    const fillPct  = Math.round(m.score/maxSc*100);
+    const capClr   = CAP_CLR[m.cap]; const capCls = CAP_CLS[m.cap];
+    const p0c = m.issues.filter(i=>i.priority===1).length;
+    const p1c = m.issues.filter(i=>i.priority===2).length;
+    const inp = m.issues.filter(i=>['In Progress QA','In Progress Dev','In Review'].includes(i.state?.name)).length;
+    const rdy = m.issues.filter(i=>['Ready For Prod','Production Validation'].includes(i.state?.name)).length;
+    const catSet = [...m.cats].filter(c=>c!=='other');
+    return `<tr>
+      <td class="pt-title" style="text-transform:capitalize">${name}</td>
+      <td><div style="display:flex;gap:5px;flex-wrap:wrap">${catSet.map(c=>catTag(c)).join('')}</div></td>
+      <td class="c">${m.issues.length}</td>
+      <td class="c ${p0c?'':'zero'}" style="${p0c?'color:var(--red);font-weight:700':''}">${p0c||'—'}</td>
+      <td class="c ${p1c?'':'zero'}" style="${p1c?'color:var(--amber);font-weight:700':''}">${p1c||'—'}</td>
+      <td class="c">${inp||'<span class="zero">—</span>'}</td>
+      <td class="c">${rdy||'<span class="zero">—</span>'}</td>
+      <td>
+        <div class="load-wrap">
+          <div class="load-track"><div class="load-fill" style="width:${fillPct}%;background:${capClr}"></div></div>
+          <span class="load-num">${m.score}</span>
+        </div>
+      </td>
+      <td class="c"><span class="cap-pill ${capCls}">${m.cap}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+/* ═══════════════════════════════════
+   MAIN LOAD
+═══════════════════════════════════ */
+let _lastData = null;
+
+async function loadData(force) {
+  setLive('loading','Fetching data…');
+  document.getElementById('err-bar').classList.remove('show');
+  if(force) document.getElementById('loader').style.display='flex';
+
+  try {
+    const issues = await fetchIssues();
+    setLdrMsg(`Processing ${issues.length} issues…`);
+    const data   = processIssues(issues);
+    _lastData    = data;
+
+    if(!loadSnap()||loadSnap()._date!==istDate()) saveSnap(data);
+
+    renderOverview(data);
+    renderDeliveryGrid(data.entities,'client','client-grid');
+    renderDeliveryGrid(data.entities,'poc','poc-grid');
+    renderProduct(data.cats);
+    renderTeam(data.members);
+
+    // Update sidebar badges
+    const highC = Object.values(data.entities).filter(e=>e.category==='client'&&e.risk==='High').length;
+    const highP = Object.values(data.entities).filter(e=>e.category==='poc'&&e.risk==='High').length;
+    const cc = document.getElementById('cnt-clients');
+    const cp = document.getElementById('cnt-poc');
+    cc.textContent=highC; cc.classList.toggle('show',highC>0);
+    cp.textContent=highP; cp.classList.toggle('show',highP>0);
+
+    const now = new Date(Date.now()+5.5*3600000);
+    const ts  = now.toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',hour12:true});
+    document.getElementById('tb-ts').textContent=`${ts} IST`;
+    setLive('live',`${issues.length} issues loaded`);
+  } catch(e) {
+    setLive('error','Failed to load');
+    document.getElementById('err-msg').textContent=e.message;
+    document.getElementById('err-bar').classList.add('show');
+    console.error(e);
+    if(e.message.includes('No Worker URL')) goTo('settings');
+  } finally {
+    document.getElementById('loader').style.display='none';
+  }
+}
+
+/* ═══════════════════════════════════
+   UI HELPERS
+═══════════════════════════════════ */
+const PAGE_TITLES = {
+  overview:'Overview', clients:'Client delivery', poc:'POC & prospects',
+  product:'Product testing', team:'Team & capacity', settings:'Settings'
+};
+
+function goTo(page) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
+  document.getElementById(`page-${page}`)?.classList.add('active');
+  document.querySelector(`.sb-item[data-page="${page}"]`)?.classList.add('active');
+  document.getElementById('tb-title').textContent = PAGE_TITLES[page]||page;
+  document.getElementById('main-scroll').scrollTop=0;
+}
+
+function setLive(type,msg) {
+  const dot=document.getElementById('live-dot');
+  dot.className='live-dot '+(type==='live'?'ld-live':type==='error'?'ld-error':'ld-loading');
+  document.getElementById('live-text').textContent=msg;
+}
+function setLdrMsg(m){const el=document.getElementById('ldr-msg');if(el)el.textContent=m;}
+
+function doRefresh(){loadData(true);}
+
+let _autoTimer=null;
+function toggleAuto(){
+  const btn=document.getElementById('auto-btn');
+  if(_autoTimer){clearInterval(_autoTimer);_autoTimer=null;btn.classList.remove('tb-auto-on');}
+  else{
+    const mins=getCfg().interval||5;
+    _autoTimer=setInterval(()=>loadData(false),mins*60000);
+    btn.classList.add('tb-auto-on');
+  }
+}
+
+/* ═══════════════════════════════════
+   SETTINGS
+═══════════════════════════════════ */
+function settingsTab(id) {
+  document.querySelectorAll('.settings-section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.snav-item').forEach(s=>s.classList.remove('active'));
+  document.getElementById(`ss-${id}`)?.classList.add('active');
+  document.querySelectorAll('.snav-item').forEach(s=>{
+    if(s.textContent.toLowerCase().includes(id.replace('-cfg','').replace('-',' '))) s.classList.add('active');
+  });
+}
+
+function saveConnection() {
+  const url      = document.getElementById('cfg-url').value.trim();
+  const interval = parseInt(document.getElementById('cfg-interval').value)||5;
+  localStorage.setItem(K.cfg, JSON.stringify({url,interval}));
+  loadData(true);
+}
+
+async function testConnection() {
+  const url = document.getElementById('cfg-url').value.trim();
+  const res  = document.getElementById('conn-test-result');
+  res.style.display='block'; res.textContent='Testing…'; res.style.color='var(--ink-3)';
+  try {
+    const r = await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:'{ viewer { id name } }'})});
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const j = await r.json();
+    if(j.data?.viewer?.name) { res.textContent=`✓ Connected — logged in as ${j.data.viewer.name}`; res.style.color='var(--green)'; }
+    else if(j.errors) throw new Error(j.errors[0].message);
+    else { res.textContent='✓ Worker reachable — response OK'; res.style.color='var(--green)'; }
+  } catch(e) {
+    res.textContent=`✗ ${e.message}`; res.style.color='var(--red)';
+  }
+}
+
+/* Rules */
+function renderRules() {
+  const rules = getRules();
+  document.getElementById('rule-list').innerHTML = rules.map((r,i)=>`
+    <div class="rule-row" id="rule-${i}">
+      <input class="rule-input" placeholder="Keyword or phrase (e.g. POC, pilot, feature)" value="${r.keyword||''}" id="rk-${i}">
+      <select class="rule-select" id="rc-${i}">
+        <option value="client"  ${r.category==='client' ?'selected':''}>Client</option>
+        <option value="poc"     ${r.category==='poc'    ?'selected':''}>POC</option>
+        <option value="product" ${r.category==='product'?'selected':''}>Product</option>
+        <option value="other"   ${r.category==='other'  ?'selected':''}>Other</option>
+      </select>
+      <button class="rule-del" onclick="deleteRule(${i})" title="Remove rule">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg>
+      </button>
+    </div>`).join('');
+}
+
+function addRule() {
+  const rules = getRules(); rules.push({keyword:'',category:'client'});
+  localStorage.setItem(K.rules,JSON.stringify(rules)); renderRules();
+}
+function deleteRule(i) {
+  const rules = getRules(); rules.splice(i,1);
+  localStorage.setItem(K.rules,JSON.stringify(rules)); renderRules();
+}
+function saveRules() {
+  const rules = getRules().map((_,i)=>({
+    keyword: document.getElementById(`rk-${i}`)?.value.trim()||'',
+    category: document.getElementById(`rc-${i}`)?.value||'client'
+  })).filter(r=>r.keyword);
+  localStorage.setItem(K.rules,JSON.stringify(rules));
+  const btn = document.querySelector('#ss-classification .btn-primary');
+  if(btn){btn.textContent='Saved!';setTimeout(()=>btn.textContent='Save rules',1500);}
+}
+function saveClients() {
+  localStorage.setItem(K.clients,document.getElementById('cfg-clients').value);
+  const btn = document.querySelector('#ss-clients-cfg .btn-primary');
+  if(btn){btn.textContent='Saved!';setTimeout(()=>btn.textContent='Save client list',1500);}
+}
+
+function initSettings() {
+  const c = getCfg();
+  const el = document.getElementById('cfg-url');
+  if(el) el.value = c.url||'';
+  const ci = document.getElementById('cfg-interval');
+  if(ci) ci.value = c.interval||5;
+  const clEl = document.getElementById('cfg-clients');
+  if(clEl) clEl.value = getClients().join('\n');
+  renderRules();
+}
+
+/* ═══════════════════════════════════
+   BOOT
+═══════════════════════════════════ */
+window.addEventListener('DOMContentLoaded', () => {
+  initSettings();
+  const { url } = getCfg();
+  if(!url) {
+    document.getElementById('loader').style.display='none';
+    goTo('settings');
+    setLive('error','Not connected');
+    document.getElementById('err-msg').textContent='No Worker URL configured.';
+    document.getElementById('err-bar').classList.add('show');
+  } else {
+    loadData(false);
+  }
+});
+</script>
+</body>
+</html>
