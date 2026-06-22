@@ -631,6 +631,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;background:
             <div class="snav-item active" onclick="settingsTab('connection')">Connection</div>
             <div class="snav-item" onclick="settingsTab('classification')">Classification rules</div>
             <div class="snav-item" onclick="settingsTab('clients-cfg')">Client list</div>
+            <div class="snav-item" onclick="settingsTab('team-cfg')">Team members</div>
           </div>
           <div style="min-width:0">
 
@@ -728,6 +729,22 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;background:
               </div>
             </div>
 
+            <!-- Team members -->
+            <div class="settings-section" id="ss-team-cfg">
+              <div class="settings-card">
+                <div class="sc-title">Team members</div>
+                <div class="sc-desc">Only these people will appear in the Team &amp; capacity page and team pulse. Issues assigned to anyone not on this list are still counted in client/POC delivery totals. Leave blank to show everyone.</div>
+                <div class="form-row">
+                  <label class="form-label">QA / FDE team roster (one full name per line)</label>
+                  <textarea class="form-input" id="cfg-team" rows="16" placeholder="Aryan Malhotra&#10;Pratham Jangid&#10;Aarti Panchal"></textarea>
+                  <div class="form-hint">Names are matched against Linear assignee names. First name matching is used, so "Aryan Malhotra" will match an assignee called "aryan" or "aryan.malhotra". Add new members here as you hire.</div>
+                </div>
+                <div class="form-actions">
+                  <button class="btn-primary" onclick="saveTeam()">Save team roster</button>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
       </div>
@@ -747,6 +764,7 @@ const K = {
   snap:    'cqct_snap',
   rules:   'cqct_rules',
   clients: 'cqct_clients',
+  team:    'cqct_team',
 };
 
 /* ═══════════════════════════════════
@@ -784,6 +802,30 @@ function getClientOwner(name) {
   return c?.owner||'';
 }
 function loadSnap()   { try{return JSON.parse(localStorage.getItem(K.snap)||'null');}catch{return null;} }
+
+// Normalise a name to lowercase first-name or first+last for fuzzy matching
+function normName(n) { return (n||'').toLowerCase().trim(); }
+
+function getTeamNames() {
+  const raw = localStorage.getItem(K.team)||'';
+  if(!raw.trim()) return null; // null = no filter, show everyone
+  return raw.split('\n').map(s=>s.trim()).filter(Boolean).map(normName);
+}
+
+// Check if a Linear assignee name is on the team roster
+function isTeamMember(assigneeName) {
+  const team = getTeamNames();
+  if(!team) return true; // no filter configured → include everyone
+  const n = normName(assigneeName);
+  // Match if any team entry starts with or contains the assignee token
+  return team.some(t => {
+    // "aryan malhotra" matches "aryan", "aryan malhotra", "aryan.malhotra"
+    const tokens = t.split(/[\s.]+/);
+    const aTokens = n.split(/[\s.]+/);
+    // First name match is enough (Linear often stores only first name)
+    return tokens[0] && aTokens[0] && (tokens[0]===aTokens[0] || t===n);
+  });
+}
 
 function istDate()    { return new Date(Date.now()+5.5*3600000).toISOString().slice(0,10); }
 function ageDays(d)   { return Math.floor((Date.now()-new Date(d).getTime())/86400000); }
@@ -942,8 +984,9 @@ function processIssues(issues) {
     if(iss.assignee) entities[entKey].assignees.add(mName);
   }
 
-  // Score members
+  // Score members — flag team roster membership
   for(const [n,m] of Object.entries(members)) {
+    m.isTeamMember = isTeamMember(n);
     m.score = scoreIssues(m.issues);
     m.cap   = capLabel(m.score);
   }
@@ -1045,11 +1088,11 @@ function renderOverview(data) {
   const p0  = allIssues.filter(i=>i.priority===1).length;
   const rel = allIssues.filter(i=>(i.state?.name||'').toLowerCase().includes('released')).length;
   const rdy = allIssues.filter(i=>(i.state?.name||'').toLowerCase().includes('ready for prod')).length;
-  const over= Object.values(data.members).filter(m=>m.cap==='Overloaded').length;
-  const avail=Object.values(data.members).filter(m=>m.cap==='Available').length;
+  const over= Object.values(data.members).filter(m=>m.isTeamMember&&m.cap==='Overloaded').length;
+  const avail=Object.values(data.members).filter(m=>m.isTeamMember&&m.cap==='Available').length;
 
   document.getElementById('ov-sub').textContent =
-    `${data.total} active issues · ${Object.keys(data.members).filter(n=>n!=='unassigned').length} team members · ${istDate()}`;
+    `${data.total} active issues · ${Object.values(data.members).filter(m=>m.isTeamMember).length} team members · ${istDate()}`;
 
   document.getElementById('morning-strip').innerHTML = `
     <div class="ms-card sc-total" style="">
@@ -1093,7 +1136,7 @@ function renderOverview(data) {
       <div>
         <div class="cs-label">Client delivery</div>
         <div class="cs-count">${clientC}</div>
-        <div class="cs-meta">${clientAt > 0 ? `<span style="color:var(--red);font-weight:600">${clientAt} at risk</span>` : 'All on track'}</div>
+        <div class="cs-meta">${clientC} issues across all clients</div>
       </div>
     </div>
     <div class="cs-card">
@@ -1103,7 +1146,7 @@ function renderOverview(data) {
       <div>
         <div class="cs-label">POC &amp; prospects</div>
         <div class="cs-count">${pocC}</div>
-        <div class="cs-meta">${pocAt > 0 ? `<span style="color:var(--red);font-weight:600">${pocAt} at risk</span>` : 'All on track'}</div>
+        <div class="cs-meta">${pocC} issues across all POCs</div>
       </div>
     </div>
     <div class="cs-card">
@@ -1120,23 +1163,8 @@ function renderOverview(data) {
   /* Attention items */
   const attnItems = [];
 
-  // High-risk clients
-  const highRiskClients = Object.values(data.entities)
-    .filter(e=>e.category==='client'&&e.risk==='High')
-    .sort((a,b)=>a.health-b.health).slice(0,3);
-  for(const e of highRiskClients) {
-    attnItems.push({
-      icon:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 13v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1"/><circle cx="8" cy="5" r="3"/></svg>`,
-      iconBg:'var(--red-bg)',iconClr:'var(--red)',
-      title:`${e.name} — client at risk`,
-      desc:`${e.issues.length} active issues · ${e.p0} P0 · health score ${e.health}`,
-      badge:`High risk`,badgeCls:'rb-red',
-      page:'clients',
-    });
-  }
-
   // Overloaded members
-  const overloaded = Object.entries(data.members).filter(([n,m])=>m.cap==='Overloaded'&&n!=='unassigned');
+  const overloaded = Object.entries(data.members).filter(([n,m])=>m.isTeamMember&&m.cap==='Overloaded'&&n!=='unassigned');
   if(overloaded.length) attnItems.push({
     icon:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="5" r="2.5"/><circle cx="11" cy="5" r="2"/><path d="M0 14c0-3 2.5-5 5.5-5S11 11 11 14"/><path d="M11 7c2 0 4 1.5 4 4"/></svg>`,
     iconBg:'var(--amber-bg)',iconClr:'var(--amber)',
@@ -1193,7 +1221,7 @@ function renderOverview(data) {
 
   /* Team pulse */
   const membersSorted = Object.entries(data.members)
-    .filter(([n])=>n!=='unassigned')
+    .filter(([n,m])=>n!=='unassigned'&&m.isTeamMember)
     .sort((a,b)=>b[1].score-a[1].score);
   const maxSc = Math.max(...membersSorted.map(([,m])=>m.score),1);
 
@@ -1226,7 +1254,7 @@ function renderOverview(data) {
 function renderDeliveryGrid(entities, category, elId) {
   const items = Object.values(entities)
     .filter(e=>e.category===category&&e.name&&e.name!=='(Unassigned project)'&&e.issues.length>0)
-    .sort((a,b)=>a.health-b.health);
+    .sort((a,b)=>a.name.localeCompare(b.name));
 
   const el = document.getElementById(elId);
   if(!items.length) {
@@ -1250,7 +1278,7 @@ function renderDeliveryGrid(entities, category, elId) {
           <div class="dc-name">${e.name}</div>
           <div class="dc-type">${category==='client'?'Client delivery':'POC / prospect'}</div>
         </div>
-        <div class="dc-risk"><span class="risk-badge ${riskBadge(e.risk)}">${e.risk} risk</span></div>
+        <div class="dc-risk"></div>
       </div>
       <div class="dc-stats">
         <div class="dc-stat">
@@ -1267,10 +1295,6 @@ function renderDeliveryGrid(entities, category, elId) {
         </div>
       </div>
       <div class="dc-body">
-        <div class="health-row">
-          <div class="health-track"><div class="health-fill" style="width:${e.health}%;background:${hClr}"></div></div>
-          <span class="health-label" style="color:${hClr}">${e.health}/100</span>
-        </div>
         ${owner ? `<div class="dc-owner">
           <span class="dc-owner-label">Owner</span>
           <div class="dc-owner-avatar" style="background:${avatarColor(owner)}">${initials(owner)}</div>
@@ -1318,7 +1342,7 @@ function renderProduct(cats) {
 ═══════════════════════════════════ */
 function renderTeam(members) {
   const sorted = Object.entries(members)
-    .filter(([n])=>n!=='unassigned')
+    .filter(([n,m])=>n!=='unassigned'&&m.isTeamMember)
     .sort((a,b)=>b[1].score-a[1].score);
   const maxSc = Math.max(...sorted.map(([,m])=>m.score),1);
 
@@ -1440,8 +1464,9 @@ function settingsTab(id) {
   document.querySelectorAll('.settings-section').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.snav-item').forEach(s=>s.classList.remove('active'));
   document.getElementById(`ss-${id}`)?.classList.add('active');
+  const labels = { connection:'Connection', classification:'Classification', 'clients-cfg':'Client list', 'team-cfg':'Team members' };
   document.querySelectorAll('.snav-item').forEach(s=>{
-    if(s.textContent.toLowerCase().includes(id.replace('-cfg','').replace('-',' '))) s.classList.add('active');
+    if(s.textContent.trim()===labels[id]) s.classList.add('active');
   });
 }
 
@@ -1513,6 +1538,12 @@ function saveRules() {
   const btn = document.querySelector('#ss-classification .btn-primary');
   if(btn){btn.textContent='Saved!';setTimeout(()=>btn.textContent='Save rules',1500);}
 }
+function saveTeam() {
+  localStorage.setItem(K.team, document.getElementById('cfg-team').value);
+  const btn = document.querySelector('#ss-team-cfg .btn-primary');
+  if(btn){btn.textContent='Saved!';setTimeout(()=>btn.textContent='Save team roster',1500);}
+}
+
 function saveClients() {
   localStorage.setItem(K.clients,document.getElementById('cfg-clients').value);
   const btn = document.querySelector('#ss-clients-cfg .btn-primary');
@@ -1527,6 +1558,8 @@ function initSettings() {
   if(ci) ci.value = c.interval||5;
   const clEl = document.getElementById('cfg-clients');
   if(clEl) clEl.value = localStorage.getItem(K.clients)||'';
+  const tmEl = document.getElementById('cfg-team');
+  if(tmEl) tmEl.value = localStorage.getItem(K.team)||'';
   renderRules();
 }
 
