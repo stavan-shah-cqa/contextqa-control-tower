@@ -823,27 +823,41 @@ async function fetchIssues() {
 function classifyIssue(iss) {
   const rules    = getRules();
   const clients  = getClients();
-  const hay = [
-    iss.title||'',
-    iss.project?.name||'',
-    iss.team?.name||'',
-    ...(iss.labels?.nodes||[]).map(l=>l.name)
-  ].join(' ').toLowerCase();
+  const labels   = (iss.labels?.nodes||[]).map(l=>l.name);
+  const proj     = iss.project?.name||'';
+  const title    = iss.title||'';
+  const hay = [title, proj, iss.team?.name||'', ...labels].join(' ').toLowerCase();
 
   // Client name match takes priority if we have a list
   for(const cl of clients) {
     if(cl && hay.includes(cl.toLowerCase())) return { category:'client', entity:cl };
   }
 
-  // Rule-based
+  // Rule-based — derive entity name from: matching label > project > title prefix
   for(const rule of rules) {
-    if(rule.keyword && hay.includes(rule.keyword.toLowerCase())) {
-      return { category:rule.category, entity:null };
+    if(!rule.keyword) continue;
+    if(hay.includes(rule.keyword.toLowerCase())) {
+      // Try to find a good entity name
+      let entity = null;
+      // 1. Use project name if it exists and isn't generic
+      if(proj) entity = proj;
+      // 2. Use the matching label name if it looks like an entity (not a generic label)
+      if(!entity) {
+        const matchingLabel = labels.find(l => l.toLowerCase().includes(rule.keyword.toLowerCase()));
+        if(matchingLabel) entity = matchingLabel;
+      }
+      // 3. Extract prefix from title (e.g. "EA_" → "EA", "Jalcargo -" → "Jalcargo")
+      if(!entity) {
+        const prefixMatch = title.match(/^([A-Za-z0-9][A-Za-z0-9 ]{1,20}?)[\s_\-–:]/);
+        if(prefixMatch) entity = prefixMatch[1].trim();
+      }
+      // 4. Use the keyword itself as entity name (capitalised)
+      if(!entity) entity = rule.keyword.charAt(0).toUpperCase() + rule.keyword.slice(1);
+      return { category:rule.category, entity };
     }
   }
 
-  // Auto-detect entity name from project
-  const proj = iss.project?.name;
+  // Auto-detect entity name from project for anything unclassified
   if(proj) return { category:'client', entity:proj };
 
   return { category:'other', entity:null };
@@ -1188,7 +1202,7 @@ function renderOverview(data) {
 ═══════════════════════════════════ */
 function renderDeliveryGrid(entities, category, elId) {
   const items = Object.values(entities)
-    .filter(e=>e.category===category&&e.name!=='(Unassigned project)')
+    .filter(e=>e.category===category&&e.name&&e.name!=='(Unassigned project)'&&e.issues.length>0)
     .sort((a,b)=>a.health-b.health);
 
   const el = document.getElementById(elId);
