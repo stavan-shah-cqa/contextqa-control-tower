@@ -392,7 +392,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;background:
 
 /* Classification rules */
 .rule-list{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
-.rule-row{display:grid;grid-template-columns:1fr 100px 32px;gap:8px;align-items:center}
+.rule-row{display:grid;grid-template-columns:1fr 1fr 100px 32px;gap:8px;align-items:center}
 .rule-input{padding:7px 10px;font-size:12px;background:var(--surface);border:1px solid var(--border-strong);border-radius:var(--r);color:var(--ink)}
 .rule-input:focus{outline:none;border-color:var(--accent)}
 .rule-select{padding:7px 8px;font-size:12px;background:var(--surface);border:1px solid var(--border-strong);border-radius:var(--r);color:var(--ink);cursor:pointer}
@@ -833,25 +833,27 @@ function classifyIssue(iss) {
     if(cl && hay.includes(cl.toLowerCase())) return { category:'client', entity:cl };
   }
 
-  // Rule-based — derive entity name from: matching label > project > title prefix
+  // Rule-based — derive entity name from: displayName > matching label > project > title prefix
   for(const rule of rules) {
     if(!rule.keyword) continue;
     if(hay.includes(rule.keyword.toLowerCase())) {
+      // Use explicit display name if set
+      if(rule.displayName) return { category:rule.category, entity:rule.displayName };
       // Try to find a good entity name
       let entity = null;
-      // 1. Use project name if it exists and isn't generic
+      // 1. Use project name if it exists
       if(proj) entity = proj;
-      // 2. Use the matching label name if it looks like an entity (not a generic label)
+      // 2. Use the matching label name
       if(!entity) {
         const matchingLabel = labels.find(l => l.toLowerCase().includes(rule.keyword.toLowerCase()));
         if(matchingLabel) entity = matchingLabel;
       }
-      // 3. Extract prefix from title (e.g. "EA_" → "EA", "Jalcargo -" → "Jalcargo")
+      // 3. Extract prefix from title (e.g. "EA_" → "EA")
       if(!entity) {
         const prefixMatch = title.match(/^([A-Za-z0-9][A-Za-z0-9 ]{1,20}?)[\s_\-–:]/);
         if(prefixMatch) entity = prefixMatch[1].trim();
       }
-      // 4. Use the keyword itself as entity name (capitalised)
+      // 4. Use the keyword itself capitalised
       if(!entity) entity = rule.keyword.charAt(0).toUpperCase() + rule.keyword.slice(1);
       return { category:rule.category, entity };
     }
@@ -1443,7 +1445,8 @@ function renderRules() {
   const rules = getRules();
   document.getElementById('rule-list').innerHTML = rules.map((r,i)=>`
     <div class="rule-row" id="rule-${i}">
-      <input class="rule-input" placeholder="Keyword or phrase (e.g. POC, pilot, feature)" value="${r.keyword||''}" id="rk-${i}">
+      <input class="rule-input" placeholder="Keyword to match (e.g. client-ea, poc, jalcargo)" value="${r.keyword||''}" id="rk-${i}">
+      <input class="rule-input" placeholder="Display name (optional, e.g. EA - Electronic Arts)" value="${r.displayName||''}" id="rn-${i}">
       <select class="rule-select" id="rc-${i}">
         <option value="client"  ${r.category==='client' ?'selected':''}>Client</option>
         <option value="poc"     ${r.category==='poc'    ?'selected':''}>POC</option>
@@ -1453,7 +1456,12 @@ function renderRules() {
       <button class="rule-del" onclick="deleteRule(${i})" title="Remove rule">
         <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg>
       </button>
-    </div>`).join('');
+    </div>`).join('')
+    + `<div style="display:grid;grid-template-columns:1fr 1fr 100px 32px;gap:8px;padding:4px 0 0">
+      <div style="font-size:10px;color:var(--ink-4)">Keyword matched against title, labels, project</div>
+      <div style="font-size:10px;color:var(--ink-4)">Display name shown on card (leave blank to auto-detect)</div>
+      <div></div><div></div>
+    </div>`;
 }
 
 function addRule() {
@@ -1466,8 +1474,9 @@ function deleteRule(i) {
 }
 function saveRules() {
   const rules = getRules().map((_,i)=>({
-    keyword: document.getElementById(`rk-${i}`)?.value.trim()||'',
-    category: document.getElementById(`rc-${i}`)?.value||'client'
+    keyword:     document.getElementById(`rk-${i}`)?.value.trim()||'',
+    displayName: document.getElementById(`rn-${i}`)?.value.trim()||'',
+    category:    document.getElementById(`rc-${i}`)?.value||'client'
   })).filter(r=>r.keyword);
   localStorage.setItem(K.rules,JSON.stringify(rules));
   const btn = document.querySelector('#ss-classification .btn-primary');
