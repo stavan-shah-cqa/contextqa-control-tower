@@ -279,6 +279,9 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;background:
 .dc-assignee{font-size:11px;font-weight:500;padding:2px 8px;border-radius:6px;background:var(--surface-2);color:var(--ink-2);border:1px solid var(--border);text-transform:capitalize}
 .dc-last{font-size:11px;color:var(--ink-4);display:flex;align-items:center;gap:5px}
 .dc-last svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.75}
+.dc-owner{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-2);margin-bottom:8px}
+.dc-owner-avatar{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;flex-shrink:0}
+.dc-owner-label{font-size:10px;color:var(--ink-4);margin-right:2px}
 
 /* ── HEALTH BAR ── */
 .health-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
@@ -716,8 +719,8 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;background:
                 <div class="sc-desc">The dashboard auto-detects clients from your Linear projects and labels. You can also manually add client names here — useful when client names appear in issue titles rather than as structured fields.</div>
                 <div class="form-row">
                   <label class="form-label">Known client names (one per line)</label>
-                  <textarea class="form-input" id="cfg-clients" rows="8" placeholder="Acme Corp&#10;TechStartup Inc&#10;GlobalRetail"></textarea>
-                  <div class="form-hint">The dashboard will match these names against issue titles, labels, and project names to identify client work.</div>
+                  <textarea class="form-input" id="cfg-clients" rows="10" placeholder="CandleAI | Pratham&#10;Swpchamp | Rohit&#10;Jalcargo | Yash&#10;&#10;Format: Client name | POC owner (owner is optional)"></textarea>
+                  <div class="form-hint">One per line. Optionally add <code>| Owner name</code> after the client name to set a POC owner shown on the card. The name is matched against issue titles, labels, and project names.</div>
                 </div>
                 <div class="form-actions">
                   <button class="btn-primary" onclick="saveClients()">Save client list</button>
@@ -767,7 +770,19 @@ const DEFAULT_RULES = [
 ═══════════════════════════════════ */
 function getCfg()     { return JSON.parse(localStorage.getItem(K.cfg) || '{"url":"","interval":5}'); }
 function getRules()   { return JSON.parse(localStorage.getItem(K.rules) || 'null') || DEFAULT_RULES; }
-function getClients() { return (localStorage.getItem(K.clients)||'').split('\n').map(s=>s.trim()).filter(Boolean); }
+function getClients() {
+  return (localStorage.getItem(K.clients)||'').split('\n')
+    .map(s=>s.trim()).filter(Boolean)
+    .map(line=>{
+      const [name, owner=''] = line.split('|').map(s=>s.trim());
+      return { name, owner };
+    });
+}
+function getClientNames() { return getClients().map(c=>c.name); }
+function getClientOwner(name) {
+  const c = getClients().find(c=>c.name.toLowerCase()===name.toLowerCase());
+  return c?.owner||'';
+}
 function loadSnap()   { try{return JSON.parse(localStorage.getItem(K.snap)||'null');}catch{return null;} }
 
 function istDate()    { return new Date(Date.now()+5.5*3600000).toISOString().slice(0,10); }
@@ -822,7 +837,7 @@ async function fetchIssues() {
 ═══════════════════════════════════ */
 function classifyIssue(iss) {
   const rules    = getRules();
-  const clients  = getClients();
+  const clients  = getClientNames();
   const labels   = (iss.labels?.nodes||[]).map(l=>l.name);
   const proj     = iss.project?.name||'';
   const title    = iss.title||'';
@@ -1214,12 +1229,14 @@ function renderDeliveryGrid(entities, category, elId) {
   }
 
   const riskBadge = r => r==='High'?'rb-red':r==='Medium'?'rb-amber':'rb-green';
-  const clr = category==='client'?'var(--cat-client)':'var(--cat-poc)';
 
   el.innerHTML = items.map(e=>{
     const hClr = healthColor(e.health);
-    const lastActLabel = e.lastActivityDays===0 ? 'Today' : e.lastActivityDays===1 ? 'Yesterday' : `${e.lastActivityDays}d ago`;
-    const assigneeList = [...e.assignees].slice(0,5);
+    const lastActLabel = e.lastActivityDays===0?'Today':e.lastActivityDays===1?'Yesterday':`${e.lastActivityDays}d ago`;
+    const owner = getClientOwner(e.name);
+    const inProgress = e.issues.filter(i=>['In Progress QA','In Progress Dev','In Review'].includes(i.state?.name)).length;
+    const released   = e.issues.filter(i=>(i.state?.name||'').toLowerCase().includes('released')).length;
+
     return `<div class="delivery-card">
       <div class="dc-header">
         <div class="dc-avatar" style="background:${avatarColor(e.name)}">${initials(e.name)}</div>
@@ -1239,19 +1256,24 @@ function renderDeliveryGrid(entities, category, elId) {
           <div class="dc-stat-lbl">P0 urgent</div>
         </div>
         <div class="dc-stat">
-          <div class="dc-stat-val ${e.aging>2?'v-amber':''}">${e.aging}</div>
-          <div class="dc-stat-lbl">Aging (7d+)</div>
+          <div class="dc-stat-val ${inProgress>0?'v-amber':''}">${inProgress}</div>
+          <div class="dc-stat-lbl">In progress</div>
         </div>
       </div>
       <div class="dc-body">
         <div class="health-row">
           <div class="health-track"><div class="health-fill" style="width:${e.health}%;background:${hClr}"></div></div>
-          <span class="health-label">${e.health}</span>
+          <span class="health-label" style="color:${hClr}">${e.health}/100</span>
         </div>
-        <div class="dc-assignees">${assigneeList.map(a=>`<span class="dc-assignee">${a}</span>`).join('')}</div>
+        ${owner ? `<div class="dc-owner">
+          <span class="dc-owner-label">Owner</span>
+          <div class="dc-owner-avatar" style="background:${avatarColor(owner)}">${initials(owner)}</div>
+          <span style="font-weight:500;text-transform:capitalize">${owner}</span>
+        </div>` : ''}
         <div class="dc-last">
           <svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><polyline points="8 5 8 8 10.5 10"/></svg>
           Last activity: ${lastActLabel}
+          ${released>0?`<span style="margin-left:auto;color:var(--green);font-weight:600">${released} released</span>`:''}
         </div>
       </div>
     </div>`;
@@ -1495,7 +1517,7 @@ function initSettings() {
   const ci = document.getElementById('cfg-interval');
   if(ci) ci.value = c.interval||5;
   const clEl = document.getElementById('cfg-clients');
-  if(clEl) clEl.value = getClients().join('\n');
+  if(clEl) clEl.value = localStorage.getItem(K.clients)||'';
   renderRules();
 }
 
