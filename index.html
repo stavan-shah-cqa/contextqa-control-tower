@@ -395,7 +395,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;background:
 
 /* Classification rules */
 .rule-list{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
-.rule-row{display:grid;grid-template-columns:1fr 1fr 100px 32px;gap:8px;align-items:center}
+.rule-row{display:grid;grid-template-columns:1fr 1fr 1fr 100px 32px;gap:8px;align-items:center}
 .rule-input{padding:7px 10px;font-size:12px;background:var(--surface);border:1px solid var(--border-strong);border-radius:var(--r);color:var(--ink)}
 .rule-input:focus{outline:none;border-color:var(--accent)}
 .rule-select{padding:7px 8px;font-size:12px;background:var(--surface);border:1px solid var(--border-strong);border-radius:var(--r);color:var(--ink);cursor:pointer}
@@ -845,7 +845,10 @@ function classifyIssue(iss) {
 
   // Client name match takes priority if we have a list
   for(const cl of clients) {
-    if(cl && hay.includes(cl.toLowerCase())) return { category:'client', entity:cl };
+    if(cl && hay.includes(cl.toLowerCase())) {
+      const clientCfg = getClients().find(c=>c.name.toLowerCase()===cl.toLowerCase());
+      return { category:'client', entity:cl, owner:clientCfg?.owner||'' };
+    }
   }
 
   // Rule-based — derive entity name from: displayName > matching label > project > title prefix
@@ -853,7 +856,7 @@ function classifyIssue(iss) {
     if(!rule.keyword) continue;
     if(hay.includes(rule.keyword.toLowerCase())) {
       // Use explicit display name if set
-      if(rule.displayName) return { category:rule.category, entity:rule.displayName };
+      if(rule.displayName) return { category:rule.category, entity:rule.displayName, owner:rule.owner||'' };
       // Try to find a good entity name
       let entity = null;
       // 1. Use project name if it exists
@@ -870,14 +873,14 @@ function classifyIssue(iss) {
       }
       // 4. Use the keyword itself capitalised
       if(!entity) entity = rule.keyword.charAt(0).toUpperCase() + rule.keyword.slice(1);
-      return { category:rule.category, entity };
+      return { category:rule.category, entity, owner:rule.owner||'' };
     }
   }
 
   // Auto-detect entity name from project for anything unclassified
-  if(proj) return { category:'client', entity:proj };
+  if(proj) return { category:'client', entity:proj, owner:'' };
 
-  return { category:'other', entity:null };
+  return { category:'other', entity:null, owner:'' };
 }
 
 /* ═══════════════════════════════════
@@ -913,8 +916,8 @@ function processIssues(issues) {
   const cats = { client:[], poc:[], product:[], other:[] };
 
   for(const iss of issues) {
-    const { category, entity } = classifyIssue(iss);
-    const cls = { ...iss, _cat:category, _entity:entity };
+    const { category, entity, owner } = classifyIssue(iss);
+    const cls = { ...iss, _cat:category, _entity:entity, _owner:owner };
     cats[category].push(cls);
 
     // Entity grouping (clients + POCs)
@@ -924,8 +927,11 @@ function processIssues(issues) {
 
     if(!entities[entKey]) entities[entKey] = {
       name: entity || '(Unassigned project)',
+      owner: cls._owner || '',
       category, issues:[], assignees:new Set()
-    };
+    }
+    // Update owner if not yet set (first rule match wins)
+    if(!entities[entKey].owner && cls._owner) entities[entKey].owner = cls._owner;
     entities[entKey].issues.push(cls);
 
     // Member map
@@ -1233,7 +1239,7 @@ function renderDeliveryGrid(entities, category, elId) {
   el.innerHTML = items.map(e=>{
     const hClr = healthColor(e.health);
     const lastActLabel = e.lastActivityDays===0?'Today':e.lastActivityDays===1?'Yesterday':`${e.lastActivityDays}d ago`;
-    const owner = getClientOwner(e.name);
+    const owner = e.owner || '';
     const inProgress = e.issues.filter(i=>['In Progress QA','In Progress Dev','In Review'].includes(i.state?.name)).length;
     const released   = e.issues.filter(i=>(i.state?.name||'').toLowerCase().includes('released')).length;
 
@@ -1467,8 +1473,9 @@ function renderRules() {
   const rules = getRules();
   document.getElementById('rule-list').innerHTML = rules.map((r,i)=>`
     <div class="rule-row" id="rule-${i}">
-      <input class="rule-input" placeholder="Keyword to match (e.g. client-ea, poc, jalcargo)" value="${r.keyword||''}" id="rk-${i}">
-      <input class="rule-input" placeholder="Display name (optional, e.g. EA - Electronic Arts)" value="${r.displayName||''}" id="rn-${i}">
+      <input class="rule-input" placeholder="Keyword (e.g. client-ea, swpchamp)" value="${r.keyword||''}" id="rk-${i}">
+      <input class="rule-input" placeholder="Display name (e.g. EA - Electronic Arts)" value="${r.displayName||''}" id="rn-${i}">
+      <input class="rule-input" placeholder="Owner name (e.g. Pratham)" value="${r.owner||''}" id="ro-${i}">
       <select class="rule-select" id="rc-${i}">
         <option value="client"  ${r.category==='client' ?'selected':''}>Client</option>
         <option value="poc"     ${r.category==='poc'    ?'selected':''}>POC</option>
@@ -1479,9 +1486,10 @@ function renderRules() {
         <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg>
       </button>
     </div>`).join('')
-    + `<div style="display:grid;grid-template-columns:1fr 1fr 100px 32px;gap:8px;padding:4px 0 0">
-      <div style="font-size:10px;color:var(--ink-4)">Keyword matched against title, labels, project</div>
-      <div style="font-size:10px;color:var(--ink-4)">Display name shown on card (leave blank to auto-detect)</div>
+    + `<div style="display:grid;grid-template-columns:1fr 1fr 1fr 100px 32px;gap:8px;padding:6px 0 0">
+      <div style="font-size:10px;color:var(--ink-4)">Keyword — matched against title, labels, project</div>
+      <div style="font-size:10px;color:var(--ink-4)">Display name — shown on the card</div>
+      <div style="font-size:10px;color:var(--ink-4)">Owner — person responsible</div>
       <div></div><div></div>
     </div>`;
 }
@@ -1498,6 +1506,7 @@ function saveRules() {
   const rules = getRules().map((_,i)=>({
     keyword:     document.getElementById(`rk-${i}`)?.value.trim()||'',
     displayName: document.getElementById(`rn-${i}`)?.value.trim()||'',
+    owner:       document.getElementById(`ro-${i}`)?.value.trim()||'',
     category:    document.getElementById(`rc-${i}`)?.value||'client'
   })).filter(r=>r.keyword);
   localStorage.setItem(K.rules,JSON.stringify(rules));
