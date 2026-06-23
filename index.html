@@ -813,18 +813,37 @@ function getTeamNames() {
 }
 
 // Check if a Linear assignee name is on the team roster
+function matchesTeamEntry(rosterEntry, linearName) {
+  const r = rosterEntry.toLowerCase().trim();
+  const l = linearName.toLowerCase().trim();
+  if(r === l) return true;
+
+  // Handle email format (e.g. harsh@contextqa.com → extract "harsh")
+  const lClean = l.includes('@') ? l.split('@')[0] : l;
+  // Handle dots/dashes in email prefix (harsh.vardhan → harshvardhan)
+  const lNoDots = lClean.replace(/[._-]/g, '');
+  const lFirst  = lClean.split(/[._-]/)[0]; // first token of email prefix
+
+  const rFirst  = r.split(/\s+/)[0]; // first name from roster
+  const rNoDots = r.replace(/\s+/g, ''); // full name no spaces
+
+  // First name match
+  if(rFirst && lFirst && rFirst === lFirst) return true;
+  // Roster first name starts with email first token (harsh matches harshvardhan)
+  if(rFirst && lFirst && rFirst.startsWith(lFirst)) return true;
+  if(rFirst && lFirst && lFirst.startsWith(rFirst)) return true;
+  // Full name (no spaces) matches email prefix (no dots)
+  if(rNoDots && lNoDots && rNoDots.startsWith(lNoDots)) return true;
+  if(rNoDots && lNoDots && lNoDots.startsWith(rNoDots)) return true;
+
+  return false;
+}
+
 function isTeamMember(assigneeName) {
   const team = getTeamNames();
-  if(!team) return true; // no filter configured → include everyone
+  if(!team) return true;
   const n = normName(assigneeName);
-  // Match if any team entry starts with or contains the assignee token
-  return team.some(t => {
-    // "aryan malhotra" matches "aryan", "aryan malhotra", "aryan.malhotra"
-    const tokens = t.split(/[\s.]+/);
-    const aTokens = n.split(/[\s.]+/);
-    // First name match is enough (Linear often stores only first name)
-    return tokens[0] && aTokens[0] && (tokens[0]===aTokens[0] || t===n);
-  });
+  return team.some(t => matchesTeamEntry(t, n));
 }
 
 function istDate()    { return new Date(Date.now()+5.5*3600000).toISOString().slice(0,10); }
@@ -881,14 +900,7 @@ async function fetchIssues() {
         userIds = allUsers
           .filter(u => {
             const uName = normName(u.displayName || u.name);
-            return teamNames.some(t => {
-              const tTokens = t.split(/[\s.]+/);
-              const uTokens = uName.split(/[\s.]+/);
-              // Match on first name, or full name
-              return tTokens[0] && uTokens[0] && (
-                tTokens[0] === uTokens[0] || t === uName
-              );
-            });
+            return teamNames.some(t => matchesTeamEntry(t, uName));
           })
           .map(u => u.id);
         setLdrMsg(`Found ${userIds.length} of ${teamNames.length} team members in Linear…`);
